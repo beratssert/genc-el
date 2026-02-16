@@ -1,0 +1,25 @@
+# MacOS
+.DS_Store
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Java / Spring Boot (Planned)
+**/target/
+**/*.class
+.gradle/
+**/build/
+
+# Flutter (Planned)
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/pubspec.lock

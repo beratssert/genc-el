@@ -1,6 +1,6 @@
-# Genc-El (Youth-Hand)
+# Genç El
 
-**Genc-El** is a social responsibility project designed to bridge the gap between university students and elderly or disabled individuals who need assistance with daily shopping.
+**Genç El** is a social responsibility project designed to bridge the gap between university students and elderly or disabled individuals who need assistance with daily shopping.
 
 ## 🎯 Project Goal
 The platform allows elderly or disabled individuals to request shopping assistance from nearby students. Students fulfill these requests and, in return, receive performance-based scholarships funded by institutions (municipalities, NGOs).

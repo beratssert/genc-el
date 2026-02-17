@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tdp_frontend/screens/beneficiary_screens/beneficiary_create_list.dart';
 import 'package:tdp_frontend/screens/beneficiary_screens/beneficiary_main_screen.dart';
 
 void main() {

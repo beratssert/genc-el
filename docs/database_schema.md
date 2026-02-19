@@ -1,6 +1,6 @@
 # Veritabanı Şeması (PostgreSQL)
 
-Proje için önerilen **İlişkisel Veritabanı (Relational Database)** tasarımı aşağıdadır. Kullanıcı geri bildirimi üzerine alışveriş listesi metin/JSON olarak revize edilmiştir.
+Proje için **İlişkisel Veritabanı (Relational Database)** tasarımı aşağıdadır. Kullanıcı geri bildirimi üzerine alışveriş listesi metin/JSON olarak revize edilmiştir.
 
 ## ER Diyagramı
 
@@ -10,57 +10,68 @@ erDiagram
     USER ||--o{ TASK : requests_or_performs
     USER ||--o{ BURSARY_HISTORY : has
     TASK ||--o{ TASK_LOG : tracks
-    
+    USER ||--o{ TASK_LOG : performs
+
     INSTITUTION {
-        Long id PK
+        UUID id PK
         String name
         String region
         String contact_info
         Boolean is_active "Soft delete"
+        Timestamp created_at
     }
 
     USER {
-        Long id PK
-        Long institution_id FK
-        String role "ELDERLY, STUDENT, ADMIN"
+        UUID id PK
+        UUID institution_id FK
+        String role "STUDENT, ELDERLY, INSTITUTION_ADMIN"
         String first_name
         String last_name
         String phone_number
+        String email "Unique"
+        String password_hash
         String address
         Double latitude
         Double longitude
         Boolean is_active "Soft delete"
         String iban "For Students"
+        Timestamp created_at
     }
 
     BURSARY_HISTORY {
-        Long id PK
-        Long student_id FK
+        UUID id PK
+        UUID student_id FK
         Integer year
         Integer month
         Integer completed_task_count
         Double calculated_amount
         Boolean is_paid
+        Timestamp payment_date
+        String transaction_reference
+        Timestamp created_at
     }
 
     TASK {
-        Long id PK
-        Long requester_id FK "Elderly"
-        Long volunteer_id FK "Student"
+        UUID id PK
+        UUID requester_id FK "Elderly"
+        UUID volunteer_id FK "Student"
         String status "PENDING, ASSIGNED, IN_PROGRESS, DELIVERED, COMPLETED, CANCELLED"
         JSONB shopping_list "List of items to buy"
-        String note "Extra instructions like 'Ring the bell'"
-        Timestamp created_at
-        Timestamp updated_at
+        String note "Extra instructions"
         Double total_amount_given
         Double change_amount
         String receipt_image_url
+        Boolean is_active "Soft delete"
+        Timestamp created_at
+        Timestamp updated_at
     }
     
     TASK_LOG {
-        Long id PK
-        Long task_id FK
-        String action "CREATED, ASSIGNED, SHOPPING_STARTED, DELIVERED, COMPLETED"
+        UUID id PK
+        UUID task_id FK
+        String action "CREATED, ASSIGNED, SHOPPING_STARTED, DELIVERED, COMPLETED, CANCELLED"
+        UUID user_id FK "Who performed the action"
+        String details
         Timestamp timestamp
     }
 ```
@@ -69,58 +80,66 @@ erDiagram
 
 ### 1. `institutions` (Kurumlar)
 Kurumların (Belediye, STK vb.) tutulduğu tablo.
-- `id`: Primary Key
+- `id`: Primary Key (UUID)
 - `name`: Kurum adı
 - `region`: Sorumlu olduğu bölge (İl/İlçe)
 - `contact_info`: İletişim bilgileri
 - `is_active`: Kurum pasife alınırsa işlem yapamaz (Soft Delete).
+- `created_at`: Kayıt tarihi.
 
 ### 2. `users` (Kullanıcılar)
 Tüm kullanıcı rollerini tek tabloda tutuyoruz (Single Table).
-- `id`: Primary Key
+- `id`: Primary Key (UUID)
 - `institution_id`: Hangi kuruma bağlı olduğu (Foreign Key).
 - `role`: Kullanıcının rolü (`STUDENT`, `ELDERLY`, `INSTITUTION_ADMIN`).
 - `first_name`, `last_name`: Ad Soyad.
-- `phone_number`: İletişim numarası (Login ve bildirimler için önemli).
+- `phone_number`: İletişim numarası.
+- `email`: E-posta adresi (Unique, Login için).
+- `password_hash`: Şifre hash'i.
 - `address`: Açık adres.
-- `latitude`, `longitude`: Konum tabanlı eşleşme için koordinatlar (PostGIS kullanılabilir).
+- `latitude`, `longitude`: Konum tabanlı eşleşme için koordinatlar.
 - `is_active`: Kullanıcı hesabını kapatırsa veya dondurursa false olur (Soft Delete).
 - `iban`: Sadece öğrenciler için, burs ödemesi yapılacak hesap no.
+- `created_at`: Kayıt tarihi.
 
 ### 3. `bursary_history` (Burs Geçmişi ve Hakedişler)
 Öğrencilerin aylık performanslarının ve burs ödemelerinin tutulduğu tablo.
-- **Neden var?** `Users` tablosunda sadece tek bir rakam tutarsak ("Bu ay 3 yaptı"), ay bittiğinde bu veriyi kaybederiz. Geçmişe dönük "Ocak ayında kaç yaptı? Parasını aldı mı?" takibi için bu tablo şarttır.
-- `student_id`: Hangi öğrenci?
+- `id`: Primary Key (UUID)
+- `student_id`: Hangi öğrenci? (User FK)
 - `year`: Hangi yıl (Örn: 2024).
 - `month`: Hangi ay (Örn: 2).
-- `completed_task_count`: O ay tamamladığı görev sayısı. (Otomatik hesaplanıp buraya yazılır).
+- `completed_task_count`: O ay tamamladığı görev sayısı.
 - `calculated_amount`: Hak ettiği burs miktarı.
 - `is_paid`: Ödeme yapıldı mı?
+- `payment_date`: Ödeme tarihi.
+- `transaction_reference`: Banka dekont/referans no.
+- `created_at`: Kayıt tarihi.
 
 ### 4. `tasks` (Görevler / Alışveriş İstekleri)
 Ana işlem tablosu.
-- `id`: Primary Key
+- `id`: Primary Key (UUID)
 - `requester_id`: İsteyen yaşlı/engelli (User FK).
 - `volunteer_id`: Atanan öğrenci (User FK). Başlangıçta NULL olabilir.
 - `status`: Görevin anlık durumu.
     - `PENDING`: İstek oluşturuldu, öğrenci aranıyor.
-    - `ASSIGNED`: Öğrenci kabul etti, yolda.
-    - `AT_HOME_INITIAL`: Öğrenci eve vardı, parayı ve listeyi teyit ediyor.
-    - `SHOPPING`: Öğrenci alışverişte.
-    - `AT_HOME_FINAL`: Öğrenci döndü, teslimat yapıyor.
-    - `COMPLETED`: Her şey tamamlandı.
+    - `ASSIGNED`: Öğrenci kabul etti.
+    - `IN_PROGRESS`: İşlem devam ediyor (Alışverişte vs.).
+    - `DELIVERED`: Teslim edildi.
+    - `COMPLETED`: Tamamlandı (Onaylandı).
     - `CANCELLED`: İptal edildi.
-- `shopping_list`: Alınacak ürünlerin listesi. JSONB formatında tutulur.
-    - Örnek Veri: `[{"item": "Ekmek", "qty": 2, "unit": "Adet"}, {"item": "Süt", "qty": 1, "unit": "Lt"}]`
-- `note`: Yaşlının eklediği notlar (Örn: "Zili çalmayın", "Geldiginde ara").
-- `created_at`, `updated_at`: Kayıt oluşturulma ve güncelleme tarihleri.
-- `total_amount_given`: Yaşlının öğrenciye teslim ettiği para (Örn: 100 TL).
-- `change_amount`: Alışveriş sonrası artan para üstü (Örn: 10 TL).
+- `shopping_list`: Alınacak ürünlerin listesi. JSONB formatında tutulur (`List<String>`).
+- `note`: Yaşlının eklediği notlar.
+- `total_amount_given`: Yaşlının öğrenciye teslim ettiği para.
+- `change_amount`: Alışveriş sonrası artan para üstü.
 - `receipt_image_url`: Yüklenen alışveriş fişinin dosya yolu/URL'i.
+- `is_active`: Soft delete için (True/False).
+- `created_at`, `updated_at`: Kayıt oluşturulma ve güncelleme tarihleri.
 
 ### 5. `task_logs` (İşlem Geçmişi)
-Bir görevin durum değişikliklerini loglamak için (Audit trail). Güvenlik ve itiraz durumları için önemlidir.
-- `id`: Primary Key
-- `task_id`: Hangi göreve ait olduğu.
-- `action`: Yapılan işlem (Örn: `SHOPPING_STARTED`).
+Bir görevin durum değişikliklerini loglamak için (Audit trail).
+- `id`: Primary Key (UUID)
+- `task_id`: Hangi göreve ait olduğu (Task FK).
+- `action`: Yapılan işlem (`CREATED`, `ASSIGNED`, `SHOPPING_STARTED`, `DELIVERED`, `COMPLETED`, `CANCELLED`).
+- `user_id`: İşlemi yapan kullanıcı (User FK).
+- `details`: İşlemle ilgili ek detaylar/açıklama.
 - `timestamp`: İşlem zamanı.

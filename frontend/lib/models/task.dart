@@ -14,11 +14,24 @@
 //         String receipt_image_url
 //     }
 
+enum TaskStatus {
+  pending,
+  assigned,
+  inProgress,
+  delivered,
+  completed,
+  cancelled;
+
+  static TaskStatus fromString(String status) {
+    return TaskStatus.values.firstWhere((e) => e.name == status);
+  }
+}
+
 class Task {
   final String id;
   final String requesterId;
   final String volunteerId;
-  final String status;
+  final TaskStatus status;
   final String shoppingList;
   final String note;
   final DateTime createdAt;
@@ -46,7 +59,7 @@ class Task {
       id: json['id'],
       requesterId: json['requester_id'],
       volunteerId: json['volunteer_id'],
-      status: json['status'],
+      status: TaskStatus.fromString(json['status']),
       shoppingList: json['shopping_list'],
       note: json['note'],
       createdAt: json['created_at'],
@@ -62,7 +75,7 @@ class Task {
       'id': id,
       'requester_id': requesterId,
       'volunteer_id': volunteerId,
-      'status': status,
+      'status': status.name,
       'shopping_list': shoppingList,
       'note': note,
       'created_at': createdAt,

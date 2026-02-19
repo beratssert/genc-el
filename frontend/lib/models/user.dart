@@ -13,10 +13,20 @@
 //         String iban "For Students"
 //     }
 
+enum Role {
+  elderly,
+  student,
+  institutionAdmin;
+
+  static Role fromString(String role) {
+    return Role.values.firstWhere((e) => e.name == role);
+  }
+}
+
 class User {
   final String id;
   final String institutionId;
-  final String role;
+  final Role role;
   final String firstName;
   final String lastName;
   final String phoneNumber;
@@ -44,7 +54,7 @@ class User {
     return User(
       id: json['id'],
       institutionId: json['institution_id'],
-      role: json['role'],
+      role: Role.fromString(json['role']),
       firstName: json['first_name'],
       lastName: json['last_name'],
       phoneNumber: json['phone_number'],
@@ -60,7 +70,7 @@ class User {
     return {
       'id': id,
       'institution_id': institutionId,
-      'role': role,
+      'role': role.name,
       'first_name': firstName,
       'last_name': lastName,
       'phone_number': phoneNumber,

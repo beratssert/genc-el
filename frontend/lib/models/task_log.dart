@@ -6,10 +6,23 @@
 //         Timestamp timestamp
 //     }
 
+enum Action {
+  created,
+  assigned,
+  shoppingStarted,
+  delivered,
+  completed,
+  cancelled;
+
+  static Action fromString(String action) {
+    return Action.values.firstWhere((e) => e.name == action);
+  }
+}
+
 class TaskLog {
   final String id;
   final String taskId;
-  final String action;
+  final Action action;
   final DateTime timestamp;
 
   TaskLog({
@@ -23,7 +36,7 @@ class TaskLog {
     return TaskLog(
       id: json['id'],
       taskId: json['task_id'],
-      action: json['action'],
+      action: Action.fromString(json['action']),
       timestamp: json['timestamp'],
     );
   }
@@ -32,7 +45,7 @@ class TaskLog {
     return {
       'id': id,
       'task_id': taskId,
-      'action': action,
+      'action': action.name,
       'timestamp': timestamp,
     };
   }

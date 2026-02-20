@@ -4,7 +4,7 @@
 DROP TABLE IF EXISTS task_log;
 DROP TABLE IF EXISTS task;
 DROP TABLE IF EXISTS bursary_history;
-DROP TABLE IF EXISTS "user";
+DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS institution;
 
 -- #############################################################
@@ -20,7 +20,7 @@ CREATE TABLE institution (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE "user" (
+CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID REFERENCES institution(id) ON DELETE SET NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('STUDENT', 'ELDERLY', 'INSTITUTION_ADMIN')),
@@ -39,7 +39,7 @@ CREATE TABLE "user" (
 
 CREATE TABLE bursary_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
     year INTEGER,
     month INTEGER CHECK (month BETWEEN 1 AND 12),
     completed_task_count INTEGER DEFAULT 0,
@@ -52,8 +52,8 @@ CREATE TABLE bursary_history (
 
 CREATE TABLE task (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    requester_id UUID REFERENCES "user"(id) ON DELETE RESTRICT,
-    volunteer_id UUID REFERENCES "user"(id) ON DELETE SET NULL,
+    requester_id UUID REFERENCES users(id) ON DELETE RESTRICT,
+    volunteer_id UUID REFERENCES users(id) ON DELETE SET NULL,
     status VARCHAR(50) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'ASSIGNED', 'IN_PROGRESS', 'DELIVERED', 'COMPLETED', 'CANCELLED')),
     shopping_list JSONB,
     note TEXT,
@@ -69,7 +69,7 @@ CREATE TABLE task_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     task_id UUID REFERENCES task(id) ON DELETE CASCADE,
     action VARCHAR(50), -- CREATE, ASSIGNED, vb.
-    user_id UUID REFERENCES "user"(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     details TEXT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -85,13 +85,14 @@ INSERT INTO institution (id, name, region, contact_info) VALUES
 ('33333333-3333-3333-3333-333333333333', 'İzmir İyilik Cemiyeti', 'Ege', '02321112233');
 
 -- KURUM ADMİNLERİ EKLEME
-INSERT INTO "user" (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, is_active) VALUES 
-('11111111-1111-1111-1111-111111111111', 'INSTITUTION_ADMIN', 'Bülent', 'Yönetici', '03129990001', 'admin@ankara.com', 'admin_hash', 'Vakıf Merkezi Ankara', TRUE),
-('22222222-2222-2222-2222-222222222222', 'INSTITUTION_ADMIN', 'Sibel', 'Yılmaz', '02129990001', 'admin@istanbul.com', 'admin_hash', 'Dernek Merkezi İstanbul', TRUE),
-('33333333-3333-3333-3333-333333333333', 'INSTITUTION_ADMIN', 'Murat', 'Kaya', '02329990001', 'admin@izmir.com', 'admin_hash', 'Cemiyet Merkezi İzmir', TRUE);
+-- Test şifresi: admin123 (BCrypt hash'lenmiş)
+INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, is_active) VALUES 
+('11111111-1111-1111-1111-111111111111', 'INSTITUTION_ADMIN', 'Bülent', 'Yönetici', '03129990001', 'admin@ankara.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Vakıf Merkezi Ankara', TRUE),
+('22222222-2222-2222-2222-222222222222', 'INSTITUTION_ADMIN', 'Sibel', 'Yılmaz', '02129990001', 'admin@istanbul.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Dernek Merkezi İstanbul', TRUE),
+('33333333-3333-3333-3333-333333333333', 'INSTITUTION_ADMIN', 'Murat', 'Kaya', '02329990001', 'admin@izmir.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Cemiyet Merkezi İzmir', TRUE);
 
 -- ANKARA: 5 Öğrenci + 5 Yaşlı
-INSERT INTO "user" (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 
+INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 
 ('11111111-1111-1111-1111-111111111111', 'STUDENT', 'Ahmet', 'Yılmaz', '555001', 'ahmet@ankara.com', 'hash', 'Çankaya No 1', 39.9208, 32.8541, TRUE, 'TR0101'),
 ('11111111-1111-1111-1111-111111111111', 'STUDENT', 'Ayşe', 'Demir', '555002', 'ayse@ankara.com', 'hash', 'Kızılay No 2', 39.9255, 32.8510, TRUE, 'TR0102'),
 ('11111111-1111-1111-1111-111111111111', 'STUDENT', 'Mehmet', 'Kaya', '555003', 'mehmet@ankara.com', 'hash', 'Bahçeli No 3', 39.9167, 32.8333, TRUE, 'TR0103'),
@@ -104,7 +105,7 @@ INSERT INTO "user" (institution_id, role, first_name, last_name, phone_number, e
 ('11111111-1111-1111-1111-111111111111', 'ELDERLY', 'Ali', 'Bey', '532005', 'aliriza@ankara.com', 'hash', 'Mamak', 39.9200, 32.9000, TRUE, NULL);
 
 -- İSTANBUL: 5 Öğrenci + 5 Yaşlı
-INSERT INTO "user" (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 
+INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 
 ('22222222-2222-2222-2222-222222222222', 'STUDENT', 'Burak', 'Öztürk', '555011', 'burak@istanbul.com', 'hash', 'Kadıköy', 40.9901, 29.0200, TRUE, 'TR0201'),
 ('22222222-2222-2222-2222-222222222222', 'STUDENT', 'Selin', 'Aydın', '555012', 'selin@istanbul.com', 'hash', 'Beşiktaş', 41.0422, 29.0074, TRUE, 'TR0202'),
 ('22222222-2222-2222-2222-222222222222', 'STUDENT', 'Arda', 'Bulut', '555013', 'arda@istanbul.com', 'hash', 'Şişli', 41.0600, 28.9800, TRUE, 'TR0203'),
@@ -117,7 +118,7 @@ INSERT INTO "user" (institution_id, role, first_name, last_name, phone_number, e
 ('22222222-2222-2222-2222-222222222222', 'ELDERLY', 'Süleyman', 'Dede', '532015', 'suleyman@istanbul.com', 'hash', 'Sarıyer', 41.1600, 29.0500, TRUE, NULL);
 
 -- İZMİR: 5 Öğrenci + 5 Yaşlı
-INSERT INTO "user" (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 
+INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 
 ('33333333-3333-3333-3333-333333333333', 'STUDENT', 'Ege', 'Mavi', '555021', 'ege@izmir.com', 'hash', 'Karşıyaka', 38.4550, 27.1100, TRUE, 'TR0301'),
 ('33333333-3333-3333-3333-333333333333', 'STUDENT', 'Aslı', 'Yeşil', '555022', 'asli@izmir.com', 'hash', 'Bornova', 38.4600, 27.2100, TRUE, 'TR0302'),
 ('33333333-3333-3333-3333-333333333333', 'STUDENT', 'Kaan', 'Kara', '555023', 'kaan@izmir.com', 'hash', 'Konak', 38.4100, 27.1200, TRUE, 'TR0303'),
@@ -135,20 +136,20 @@ INSERT INTO "user" (institution_id, role, first_name, last_name, phone_number, e
 
 -- Burs Geçmişi
 INSERT INTO bursary_history (student_id, year, month, completed_task_count, calculated_amount, is_paid, payment_date, transaction_reference) VALUES 
-((SELECT id FROM "user" WHERE email = 'ahmet@ankara.com'), 2024, 1, 4, 2000.0, TRUE, '2024-01-31 10:00:00', 'ANK-TX-001'),
-((SELECT id FROM "user" WHERE email = 'ayse@ankara.com'), 2024, 1, 2, 1000.0, TRUE, '2024-01-31 11:00:00', 'ANK-TX-002'),
-((SELECT id FROM "user" WHERE email = 'burak@istanbul.com'), 2024, 1, 5, 2500.0, TRUE, '2024-01-31 12:00:00', 'IST-TX-001'),
-((SELECT id FROM "user" WHERE email = 'selin@istanbul.com'), 2024, 1, 3, 1500.0, FALSE, NULL, NULL),
-((SELECT id FROM "user" WHERE email = 'ege@izmir.com'), 2024, 1, 1, 500.0, FALSE, NULL, NULL);
+((SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 2024, 1, 4, 2000.0, TRUE, '2024-01-31 10:00:00', 'ANK-TX-001'),
+((SELECT id FROM users WHERE email = 'ayse@ankara.com'), 2024, 1, 2, 1000.0, TRUE, '2024-01-31 11:00:00', 'ANK-TX-002'),
+((SELECT id FROM users WHERE email = 'burak@istanbul.com'), 2024, 1, 5, 2500.0, TRUE, '2024-01-31 12:00:00', 'IST-TX-001'),
+((SELECT id FROM users WHERE email = 'selin@istanbul.com'), 2024, 1, 3, 1500.0, FALSE, NULL, NULL),
+((SELECT id FROM users WHERE email = 'ege@izmir.com'), 2024, 1, 1, 500.0, FALSE, NULL, NULL);
 
 -- Görevler
 INSERT INTO task (id, requester_id, volunteer_id, status, shopping_list, note, total_amount_given, change_amount, receipt_image_url) VALUES 
-('10000000-0000-0000-0000-000000000001', (SELECT id FROM "user" WHERE email = 'huseyin@ankara.com'), (SELECT id FROM "user" WHERE email = 'ahmet@ankara.com'), 'COMPLETED', '{"items": [{"name": "Ekmek", "qty": 2}]}', 'Taze olsun.', 100.0, 45.5, 'https://receipt.url'),
-('20000000-0000-0000-0000-000000000002', (SELECT id FROM "user" WHERE email = 'ismet@istanbul.com'), (SELECT id FROM "user" WHERE email = 'burak@istanbul.com'), 'IN_PROGRESS', '{"items": [{"name": "İlaç"}]}', 'Acil.', NULL, NULL, NULL),
-('30000000-0000-0000-0000-000000000003', (SELECT id FROM "user" WHERE email = 'hikmet@izmir.com'), NULL, 'PENDING', '{"items": [{"name": "Gazete"}]}', 'Hürriyet.', NULL, NULL, NULL);
+('10000000-0000-0000-0000-000000000001', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'COMPLETED', '{"items": [{"name": "Ekmek", "qty": 2}]}', 'Taze olsun.', 100.0, 45.5, 'https://receipt.url'),
+('20000000-0000-0000-0000-000000000002', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), (SELECT id FROM users WHERE email = 'burak@istanbul.com'), 'IN_PROGRESS', '{"items": [{"name": "İlaç"}]}', 'Acil.', NULL, NULL, NULL),
+('30000000-0000-0000-0000-000000000003', (SELECT id FROM users WHERE email = 'hikmet@izmir.com'), NULL, 'PENDING', '{"items": [{"name": "Gazete"}]}', 'Hürriyet.', NULL, NULL, NULL);
 
 -- Loglar
 INSERT INTO task_log (task_id, action, user_id, details) VALUES 
-('10000000-0000-0000-0000-000000000001', 'CREATED', (SELECT id FROM "user" WHERE email = 'huseyin@ankara.com'), 'İhtiyaç listesi oluşturuldu.'),
-('10000000-0000-0000-0000-000000000001', 'ASSIGNED', (SELECT id FROM "user" WHERE email = 'ahmet@ankara.com'), 'Ahmet görevi üstlendi.'),
-('20000000-0000-0000-0000-000000000002', 'CREATED', (SELECT id FROM "user" WHERE email = 'ismet@istanbul.com'), 'İlaç yardımı istendi.');
+('10000000-0000-0000-0000-000000000001', 'CREATED', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), 'İhtiyaç listesi oluşturuldu.'),
+('10000000-0000-0000-0000-000000000001', 'ASSIGNED', (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'Ahmet görevi üstlendi.'),
+('20000000-0000-0000-0000-000000000002', 'CREATED', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), 'İlaç yardımı istendi.');

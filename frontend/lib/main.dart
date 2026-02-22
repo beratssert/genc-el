@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/screens/beneficiary_screens/beneficiary_main_screen.dart';
+import 'package:tdp_frontend/shared/theme.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
+      theme: appTheme,
       home: const BeneficiaryMainScreen(),
     );
   }

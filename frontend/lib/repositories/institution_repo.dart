@@ -11,7 +11,10 @@ abstract class InstitutionRepo {
   Future<void> createUser(Map<String, dynamic> userData);
 
   /// Lists users with optional filters like role or region - Admin operation.
-  Future<List<Map<String, dynamic>>> getUsers({String? role, String? region});
+  Future<List<Map<String, dynamic>>> getUsers({String? role});
+
+  /// Updates user information.
+  Future<void> updateUser(String id, Map<String, dynamic> userData);
 
   /// Deactivates a user (Soft delete) - Admin operation.
   Future<void> deleteUser(String id);
@@ -40,10 +43,7 @@ class InstitutionRepoImpl implements InstitutionRepo {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getUsers({
-    String? role,
-    String? region,
-  }) async {
+  Future<List<Map<String, dynamic>>> getUsers({String? role}) async {
     throw UnimplementedError('getUsers() has not been implemented');
   }
 
@@ -73,5 +73,10 @@ class InstitutionRepoImpl implements InstitutionRepo {
   @override
   Future<void> markBursaryAsPaid(String bursaryId) async {
     throw UnimplementedError('markBursaryAsPaid() has not been implemented');
+  }
+
+  @override
+  Future<void> updateUser(String id, Map<String, dynamic> userData) {
+    throw UnimplementedError('updateUser() has not been implemented');
   }
 }

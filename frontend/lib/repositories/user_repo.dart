@@ -10,9 +10,6 @@ abstract class UserRepo {
   /// Gets detailed information for a specific user.
   Future<Map<String, dynamic>> getUserDetail(String id);
 
-  /// Updates user information.
-  Future<void> updateUser(String id, Map<String, dynamic> userData);
-
   /// Gets the task history for a specific user.
   Future<List<Map<String, dynamic>>> getUserHistory(String id);
 }
@@ -22,11 +19,6 @@ class UserRepoImpl implements UserRepo {
   @override
   Future<Map<String, dynamic>> getUserDetail(String id) async {
     throw UnimplementedError('getUserDetail() has not been implemented');
-  }
-
-  @override
-  Future<void> updateUser(String id, Map<String, dynamic> userData) async {
-    throw UnimplementedError('updateUser() has not been implemented');
   }
 
   @override

@@ -10,7 +10,7 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 ## 2. Kullanıcı Yönetimi (User Management)
 *Genellikle Kurum Yöneticisi tarafından kullanılır.*
 - `POST /api/v1/users`: Yeni kullanıcı (Öğrenci/Yaşlı) ekle.
-- `GET /api/v1/users`: Kullanıcıları listele (Filtre: Role, Region vb.).
+- `GET /api/v1/users`: Kullanıcıları listele (Filtre: Role)
 - `GET /api/v1/users/{id}`: Kullanıcı detayı.
 - `PUT /api/v1/users/{id}`: Kullanıcı güncelle.
 - `DELETE /api/v1/users/{id}`: Kullanıcıyı pasife al (Soft delete).

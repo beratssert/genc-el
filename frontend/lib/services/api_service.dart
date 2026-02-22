@@ -1,48 +1,161 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tdp_frontend/shared/api_url.dart';
+import 'package:tdp_frontend/services/storage_service.dart';
 
 /// Provider for the [ApiService].
 /// This will be used by all Repositories to make network calls.
 final apiServiceProvider = Provider<ApiService>((ref) {
-  return ApiService();
+  return ApiService(ref);
 });
 
 /// A service that handles all network-level logic.
 /// Typically uses a client like Dio or Http.
 class ApiService {
-  // TODO: Initialize Dio or Http client here
-  // Dio dio = Dio();
+  final Ref _ref;
+  late final Dio dio;
+
+  ApiService(this._ref) {
+    dio = Dio(
+      BaseOptions(
+        baseUrl: ApiUrl.baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+        contentType: Headers.jsonContentType,
+      ),
+    );
+
+    // Add interceptors
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final storage = _ref.read(storageServiceProvider);
+          final token = await storage.getToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          print('REQUEST[${options.method}] => PATH: ${options.path}');
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+          print(
+            'RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}',
+          );
+          return handler.next(response);
+        },
+        onError: (DioException e, handler) async {
+          print(
+            'ERROR[${e.response?.statusCode}] => PATH: ${e.requestOptions.path}',
+          );
+
+          if (e.response?.statusCode == 401) {
+            // Unauthorized - Clear storage and could notify UI to redirect to login
+            final storage = _ref.read(storageServiceProvider);
+            await storage.clearAll();
+          }
+
+          return handler.next(e);
+        },
+      ),
+    );
+  }
 
   /// Performs a GET request.
-  /// Handles base URL, headers, and common errors.
   Future<dynamic> get(
     String endpoint, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    // 1. URL'i oluştur
-    // 2. Auth token varsa header'a ekle
-    // 3. İsteği at ve sonucu kontrol et
-    // 4. Hata varsa (401, 404, 500 vb.) özel exception fırlat
-    throw UnimplementedError('GET method skeleton only');
+    try {
+      final response = await dio.get(
+        endpoint,
+        queryParameters: queryParameters,
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
   }
 
   /// Performs a POST request.
   Future<dynamic> post(String endpoint, {dynamic data}) async {
-    // 1. Body verisini hazırla
-    // 2. İsteği at
-    // 3. Response'u dön veya hata yönetimi yap
-    throw UnimplementedError('POST method skeleton only');
+    try {
+      final response = await dio.post(endpoint, data: data);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Performs a PUT request.
+  Future<dynamic> put(String endpoint, {dynamic data}) async {
+    try {
+      final response = await dio.put(endpoint, data: data);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// Performs a DELETE request.
+  Future<dynamic> delete(String endpoint) async {
+    try {
+      final response = await dio.delete(endpoint);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
   }
 
   /// Handles file uploads (e.g. receipt images for tasks).
   Future<dynamic> uploadFile(String endpoint, String filePath) async {
-    // Multipart request logic here
-    throw UnimplementedError('File upload skeleton only');
+    try {
+      final fileName = filePath.split('/').last;
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+
+      final response = await dio.post(
+        endpoint,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
   }
 
   /// Common error handling logic for the entire app.
-  void _handleError(dynamic error) {
-    // 401: Logout logic
-    // 500: Server error notification
-    // Internet connection check
+  Exception _handleError(DioException error) {
+    if (error.response != null) {
+      final statusCode = error.response?.statusCode;
+      final data = error.response?.data;
+
+      switch (statusCode) {
+        case 400:
+          return Exception(data?['message'] ?? 'Bad Request');
+        case 401:
+          // TODO: Trigger global logout or refresh token logic
+          return Exception('Unauthorized access. Please login again.');
+        case 403:
+          return Exception('Forbidden access.');
+        case 404:
+          return Exception('Resource not found.');
+        case 500:
+          return Exception('Internal Server Error. Please try again later.');
+        default:
+          return Exception('Something went wrong: ${error.message}');
+      }
+    } else {
+      // Something happened in setting up or sending the request that triggered an Error
+      if (error.type == DioExceptionType.connectionTimeout) {
+        return Exception('Connection Timeout');
+      } else if (error.type == DioExceptionType.receiveTimeout) {
+        return Exception('Receive Timeout');
+      } else if (error.type == DioExceptionType.connectionError) {
+        return Exception('No Internet Connection');
+      }
+      return Exception('Network error: ${error.message}');
+    }
   }
 }

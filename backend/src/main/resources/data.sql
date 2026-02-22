@@ -1,17 +1,20 @@
 -- #############################################################
 -- 1. TEMİZLİK (İlişki sırasına göre)
 -- #############################################################
-DROP TABLE IF EXISTS task_log;
-DROP TABLE IF EXISTS task;
-DROP TABLE IF EXISTS bursary_history;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS institution;
+DROP TABLE IF EXISTS task_log CASCADE;
+DROP TABLE IF EXISTS task CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
+DROP TABLE IF EXISTS task_logs CASCADE;
+DROP TABLE IF EXISTS bursary_history CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS institution CASCADE;
+DROP TABLE IF EXISTS institutions CASCADE;
 
 -- #############################################################
 -- 2. TABLO OLUŞTURMA (VERİ BÜTÜNLÜĞÜ KORUNMUŞ)
 -- #############################################################
 
-CREATE TABLE institution (
+CREATE TABLE institutions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     region VARCHAR(255),
@@ -22,7 +25,7 @@ CREATE TABLE institution (
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    institution_id UUID REFERENCES institution(id) ON DELETE SET NULL,
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
     role VARCHAR(50) NOT NULL CHECK (role IN ('STUDENT', 'ELDERLY', 'INSTITUTION_ADMIN')),
     first_name VARCHAR(100),
     last_name VARCHAR(100),
@@ -50,7 +53,7 @@ CREATE TABLE bursary_history (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE task (
+CREATE TABLE tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     requester_id UUID REFERENCES users(id) ON DELETE RESTRICT,
     volunteer_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -65,9 +68,9 @@ CREATE TABLE task (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE task_log (
+CREATE TABLE task_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    task_id UUID REFERENCES task(id) ON DELETE CASCADE,
+    task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
     action VARCHAR(50), -- CREATE, ASSIGNED, vb.
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     details TEXT,
@@ -79,17 +82,18 @@ CREATE TABLE task_log (
 -- #############################################################
 
 -- KURUMLAR
-INSERT INTO institution (id, name, region, contact_info) VALUES 
+INSERT INTO institutions (id, name, region, contact_info) VALUES 
 ('11111111-1111-1111-1111-111111111111', 'Ankara Yardımlaşma Vakfı', 'İç Anadolu', '03121112233'),
 ('22222222-2222-2222-2222-222222222222', 'İstanbul Eğitim Derneği', 'Marmara', '02121112233'),
 ('33333333-3333-3333-3333-333333333333', 'İzmir İyilik Cemiyeti', 'Ege', '02321112233');
 
 -- KURUM ADMİNLERİ EKLEME
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Test şifresi: admin123 (BCrypt hash'lenmiş)
 INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, is_active) VALUES 
-('11111111-1111-1111-1111-111111111111', 'INSTITUTION_ADMIN', 'Bülent', 'Yönetici', '03129990001', 'admin@ankara.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Vakıf Merkezi Ankara', TRUE),
-('22222222-2222-2222-2222-222222222222', 'INSTITUTION_ADMIN', 'Sibel', 'Yılmaz', '02129990001', 'admin@istanbul.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Dernek Merkezi İstanbul', TRUE),
-('33333333-3333-3333-3333-333333333333', 'INSTITUTION_ADMIN', 'Murat', 'Kaya', '02329990001', 'admin@izmir.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'Cemiyet Merkezi İzmir', TRUE);
+('11111111-1111-1111-1111-111111111111', 'INSTITUTION_ADMIN', 'Bülent', 'Yönetici', '03129990001', 'admin@ankara.com', crypt('admin123', gen_salt('bf', 10)), 'Vakıf Merkezi Ankara', TRUE),
+('22222222-2222-2222-2222-222222222222', 'INSTITUTION_ADMIN', 'Sibel', 'Yılmaz', '02129990001', 'admin@istanbul.com', crypt('admin123', gen_salt('bf', 10)), 'Dernek Merkezi İstanbul', TRUE),
+('33333333-3333-3333-3333-333333333333', 'INSTITUTION_ADMIN', 'Murat', 'Kaya', '02329990001', 'admin@izmir.com', crypt('admin123', gen_salt('bf', 10)), 'Cemiyet Merkezi İzmir', TRUE);
 
 -- ANKARA: 5 Öğrenci + 5 Yaşlı
 INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 
@@ -143,13 +147,13 @@ INSERT INTO bursary_history (student_id, year, month, completed_task_count, calc
 ((SELECT id FROM users WHERE email = 'ege@izmir.com'), 2024, 1, 1, 500.0, FALSE, NULL, NULL);
 
 -- Görevler
-INSERT INTO task (id, requester_id, volunteer_id, status, shopping_list, note, total_amount_given, change_amount, receipt_image_url) VALUES 
+INSERT INTO tasks (id, requester_id, volunteer_id, status, shopping_list, note, total_amount_given, change_amount, receipt_image_url) VALUES 
 ('10000000-0000-0000-0000-000000000001', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'COMPLETED', '{"items": [{"name": "Ekmek", "qty": 2}]}', 'Taze olsun.', 100.0, 45.5, 'https://receipt.url'),
 ('20000000-0000-0000-0000-000000000002', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), (SELECT id FROM users WHERE email = 'burak@istanbul.com'), 'IN_PROGRESS', '{"items": [{"name": "İlaç"}]}', 'Acil.', NULL, NULL, NULL),
 ('30000000-0000-0000-0000-000000000003', (SELECT id FROM users WHERE email = 'hikmet@izmir.com'), NULL, 'PENDING', '{"items": [{"name": "Gazete"}]}', 'Hürriyet.', NULL, NULL, NULL);
 
 -- Loglar
-INSERT INTO task_log (task_id, action, user_id, details) VALUES 
+INSERT INTO task_logs (task_id, action, user_id, details) VALUES 
 ('10000000-0000-0000-0000-000000000001', 'CREATED', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), 'İhtiyaç listesi oluşturuldu.'),
 ('10000000-0000-0000-0000-000000000001', 'ASSIGNED', (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'Ahmet görevi üstlendi.'),
 ('20000000-0000-0000-0000-000000000002', 'CREATED', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), 'İlaç yardımı istendi.');

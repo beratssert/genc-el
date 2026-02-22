@@ -87,6 +87,7 @@ public class UserService {
                 : userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(institutionId, roleFilter);
 
         return users.stream()
+                .filter(user -> user.getRole() != User.UserRole.INSTITUTION_ADMIN) // Adminleri (kendini) listeden çıkart
                 .map(this::mapToUserResponse)
                 .collect(Collectors.toList());
     }

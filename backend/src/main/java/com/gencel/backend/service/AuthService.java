@@ -6,10 +6,8 @@ import com.gencel.backend.entity.User;
 import com.gencel.backend.repository.UserRepository;
 import com.gencel.backend.security.JwtService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,28 +15,34 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
+    private final PasswordEncoder passwordEncoder;
 
     public LoginResponse login(LoginRequest request) {
-        // Authenticate user
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        // Fetch user from database (single query)
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Kullanıcı bulunamadı"));
 
-        // Load user details
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
+        // Check if user is active
+        if (!user.getIsActive()) {
+            throw new org.springframework.security.authentication.DisabledException("Hesap pasif durumda");
+        }
+
+        // Authenticate manually to avoid duplicate database queries
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Hatalı şifre");
+        }
+
+        // Generate UserDetails for JWT
+        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail())
+                .password(user.getPasswordHash())
+                .authorities(java.util.Collections.singletonList(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
+                .build();
         
         // Generate token
         String token = jwtService.generateToken(userDetails);
-        
-        // Get user role
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Kullanıcı bulunamadı"));
 
         return LoginResponse.builder()
                 .token(token)

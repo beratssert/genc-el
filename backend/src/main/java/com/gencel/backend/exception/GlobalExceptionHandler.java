@@ -45,8 +45,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
-    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
-    public ResponseEntity<Map<String, String>> handleBadCredentialsException(org.springframework.security.authentication.BadCredentialsException ex) {
+    @ExceptionHandler({
+        org.springframework.security.authentication.BadCredentialsException.class,
+        org.springframework.security.core.userdetails.UsernameNotFoundException.class
+    })
+    public ResponseEntity<Map<String, String>> handleBadCredentialsException(Exception ex) {
         Map<String, String> error = new HashMap<>();
         error.put("error", "E-posta adresi veya şifre hatalı");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);

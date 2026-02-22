@@ -38,7 +38,7 @@ public class AuthService {
         
         // Get user role
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Kullanıcı bulunamadı"));
 
         return LoginResponse.builder()
                 .token(token)

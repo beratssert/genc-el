@@ -19,8 +19,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     public LoginResponse login(LoginRequest request) {
-        // Fetch user from database (single query)
-        User user = userRepository.findByEmail(request.getEmail())
+        // Fetch user from database (single query), bypassing @SQLRestriction to check disabled users
+        User user = userRepository.findByEmailIncludingDisabled(request.getEmail())
                 .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Kullanıcı bulunamadı"));
 
         // Check if user is active

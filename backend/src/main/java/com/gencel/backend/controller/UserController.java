@@ -1,8 +1,11 @@
 package com.gencel.backend.controller;
 
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.LoginRequest;
+import com.gencel.backend.dto.LoginResponse;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.service.AuthService;
 import com.gencel.backend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,13 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.userLogin(request);
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping
     @PreAuthorize("hasRole('INSTITUTION_ADMIN')")

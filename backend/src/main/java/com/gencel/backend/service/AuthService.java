@@ -18,10 +18,23 @@ public class AuthService {
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse userLogin(LoginRequest request) {
+        return loginWithRoles(request, java.util.List.of(User.UserRole.STUDENT, User.UserRole.ELDERLY));
+    }
+
+    public LoginResponse institutionLogin(LoginRequest request) {
+        return loginWithRoles(request, java.util.List.of(User.UserRole.INSTITUTION_ADMIN));
+    }
+
+    private LoginResponse loginWithRoles(LoginRequest request, java.util.List<User.UserRole> allowedRoles) {
         // Fetch user from database (single query), bypassing @SQLRestriction to check disabled users
         User user = userRepository.findByEmailIncludingDisabled(request.getEmail())
                 .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Kullanıcı bulunamadı"));
+
+        // Check if role is allowed
+        if (!allowedRoles.contains(user.getRole())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Yetkisiz giriş denemesi");
+        }
 
         // Check if user is active
         if (!user.getIsActive()) {

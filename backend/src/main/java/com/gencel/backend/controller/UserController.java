@@ -33,8 +33,16 @@ public class UserController {
 
     @PostMapping
     @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
-    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-        UserResponse userResponse = userService.createUser(request);
+    public ResponseEntity<UserResponse> createUser(
+            Authentication authentication,
+            @Valid @RequestBody CreateUserRequest request
+    ) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        UserResponse userResponse = userService.createUser(email, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(userResponse);
     }
 

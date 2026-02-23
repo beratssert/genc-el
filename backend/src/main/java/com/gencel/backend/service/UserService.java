@@ -2,9 +2,7 @@ package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UserResponse;
-import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
-import com.gencel.backend.repository.InstitutionRepository;
 import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,24 +18,31 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final InstitutionRepository institutionRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserResponse createUser(CreateUserRequest request) {
+    public UserResponse createUser(String currentUserEmail, CreateUserRequest request) {
         // Validate that only STUDENT or ELDERLY roles can be created
         if (request.getRole() != User.UserRole.STUDENT && request.getRole() != User.UserRole.ELDERLY) {
             throw new IllegalArgumentException("Only STUDENT or ELDERLY roles can be created through this endpoint");
+        }
+
+        // Fetch current user (institution admin) and validate role
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (currentUser.getRole() != User.UserRole.INSTITUTION_ADMIN) {
+            throw new IllegalArgumentException("Only INSTITUTION_ADMIN can create users");
+        }
+
+        if (currentUser.getInstitution() == null || currentUser.getInstitution().getId() == null) {
+            throw new IllegalArgumentException("Admin user has no institution");
         }
 
         // Check if email already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new IllegalArgumentException("User with email " + request.getEmail() + " already exists");
         }
-
-        // Validate institution exists
-        Institution institution = institutionRepository.findById(request.getInstitutionId())
-                .orElseThrow(() -> new IllegalArgumentException("Institution with id " + request.getInstitutionId() + " not found"));
 
         // Validate IBAN for students
         if (request.getRole() == User.UserRole.STUDENT && (request.getIban() == null || request.getIban().isBlank())) {
@@ -46,7 +51,7 @@ public class UserService {
 
         // Create user entity
         User user = User.builder()
-                .institution(institution)
+                .institution(currentUser.getInstitution())
                 .role(request.getRole())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())

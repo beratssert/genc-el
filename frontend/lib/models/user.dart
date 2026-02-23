@@ -14,9 +14,9 @@
 //     }
 
 enum Role {
-  elderly,
-  student,
-  institutionAdmin;
+  ELDERLY,
+  STUDENT,
+  INSTITUTION_ADMIN;
 
   static Role fromString(String role) {
     return Role.values.firstWhere((e) => e.name == role);

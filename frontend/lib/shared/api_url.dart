@@ -1,6 +1,6 @@
 class ApiUrl {
   static const String baseUrl =
-      'http://10.0.2.2:8080'; // Common local dev URL for Android emulator, change as needed
+      'http://localhost:8080'; // Common local dev URL for Android emulator, change as needed
 
   //Auth
   static const String login = '/api/v1/auth/login';

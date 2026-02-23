@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tdp_frontend/services/api_service.dart';
 
 /// Provider for the [AuthRepository] implementation.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepositoryImpl();
+  final apiService = ref.watch(apiServiceProvider);
+  return AuthRepositoryImpl(apiService);
 });
 
 /// Abstract class defining the authentication repository interface.
@@ -19,9 +21,17 @@ abstract class AuthRepository {
 
 /// Concrete implementation of [AuthRepository] with placeholder logic.
 class AuthRepositoryImpl implements AuthRepository {
+  final ApiService _apiService;
+
+  AuthRepositoryImpl(this._apiService);
+
   @override
   Future<Map<String, dynamic>> login(String username, String password) async {
-    throw UnimplementedError('login() has not been implemented');
+    final response = await _apiService.post(
+      '/api/v1/auth/login',
+      data: {'email': username, 'password': password},
+    );
+    return response as Map<String, dynamic>;
   }
 
   @override

@@ -1,14 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tdp_frontend/models/create_user_request.dart';
+import 'package:tdp_frontend/services/api_service.dart';
 
 /// Provider for the [InstitutionRepo] implementation.
 final institutionRepoProvider = Provider<InstitutionRepo>((ref) {
-  return InstitutionRepoImpl();
+  final apiService = ref.watch(apiServiceProvider);
+  return InstitutionRepoImpl(apiService);
 });
 
 /// Abstract class defining the institution and administrative management repository interface.
 abstract class InstitutionRepo {
   /// Adds a new user (Student or Elderly) - Admin operation.
-  Future<void> createUser(Map<String, dynamic> userData);
+  Future<void> createUser(CreateUserRequest request);
 
   /// Lists users with optional filters like role or region - Admin operation.
   Future<List<Map<String, dynamic>>> getUsers({String? role});
@@ -37,14 +40,31 @@ abstract class InstitutionRepo {
 
 /// Concrete implementation of [InstitutionRepo] with placeholder logic.
 class InstitutionRepoImpl implements InstitutionRepo {
+  final ApiService _apiService;
+
+  InstitutionRepoImpl(this._apiService);
+
   @override
-  Future<void> createUser(Map<String, dynamic> userData) async {
-    throw UnimplementedError('createUser() has not been implemented');
+  Future<void> createUser(CreateUserRequest request) async {
+    await _apiService.post('/api/v1/users', data: request.toJson());
   }
 
   @override
   Future<List<Map<String, dynamic>>> getUsers({String? role}) async {
-    throw UnimplementedError('getUsers() has not been implemented');
+    final Map<String, dynamic> queryParameters = {};
+    if (role != null && role.isNotEmpty) {
+      queryParameters['role'] = role;
+    }
+
+    final response = await _apiService.get(
+      '/api/v1/users',
+      queryParameters: queryParameters,
+    );
+
+    if (response is List) {
+      return List<Map<String, dynamic>>.from(response);
+    }
+    return [];
   }
 
   @override

@@ -133,7 +133,17 @@ class ApiService {
 
       switch (statusCode) {
         case 400:
-          return Exception(data?['message'] ?? 'Bad Request');
+          // Try to extract detailed Spring Boot validation errors
+          if (data is Map &&
+              data.containsKey('errors') &&
+              data['errors'] is List) {
+            final List errorsList = data['errors'];
+            final errorMessages = errorsList
+                .map((e) => e['defaultMessage'] ?? e.toString())
+                .join(',\n');
+            return Exception('Validation failed:\n$errorMessages');
+          }
+          return Exception(data?['message'] ?? 'Bad Request: $data');
         case 401:
           // TODO: Trigger global logout or refresh token logic
           return Exception('Unauthorized access. Please login again.');
@@ -142,9 +152,13 @@ class ApiService {
         case 404:
           return Exception('Resource not found.');
         case 500:
-          return Exception('Internal Server Error. Please try again later.');
+          return Exception(
+            'Internal Server Error. Please try again later.\nDetails: $data',
+          );
         default:
-          return Exception('Something went wrong: ${error.message}');
+          return Exception(
+            'Something went wrong: ${error.message}\nResponse: $data',
+          );
       }
     } else {
       // Something happened in setting up or sending the request that triggered an Error

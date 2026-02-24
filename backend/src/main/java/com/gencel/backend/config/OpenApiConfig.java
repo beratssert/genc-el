@@ -13,7 +13,15 @@ import org.springframework.context.annotation.Configuration;
 @OpenAPIDefinition(
         info = @Info(
                 title = "Genc-El API Documentation",
-                description = "Genc-El Projesi için REST API Dökümantasyonu. Bu doküman, frontend ve mobil geliştiricilerin API uç noktalarını rahatça test edebilmesi için hazırlanmıştır.",
+                description = """
+                        Genc-El Projesi için REST API dökümantasyonu.
+
+                        Kullanım önerisi:
+                        1. Kurum yöneticisi girişi için: `POST /api/v1/institution/login`
+                        2. Öğrenci / yaşlı kullanıcı girişi için: `POST /api/v1/user/login`
+                        3. Dönen JWT token'ı sağ üstteki **Authorize** butonuna tıklayarak `Bearer <token>` formatında girin.
+                        4. Ardından kurum ve kullanıcı yönetimi ile ilgili güvenli endpoint'leri (User Management, Institution Management) Swagger UI üzerinden rahatça test edebilirsiniz.
+                        """,
                 version = "1.0",
                 contact = @Contact(
                         name = "Genc-El Backend Team"

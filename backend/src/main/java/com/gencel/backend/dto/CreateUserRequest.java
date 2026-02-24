@@ -10,17 +10,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateUserRequest {
-
-    @NotNull(message = "Institution ID is required")
-    private UUID institutionId;
-
+    
     @NotNull(message = "Role is required")
     private User.UserRole role;
 

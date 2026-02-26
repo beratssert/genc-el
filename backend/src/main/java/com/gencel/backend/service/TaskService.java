@@ -5,6 +5,7 @@ import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
@@ -26,7 +27,7 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!User.UserRole.ELDERLY.equals(requester.getRole())) {
-            throw new RuntimeException("Only ELDERLY users can create tasks");
+            throw new UnauthorizedActionException("Only ELDERLY users can create tasks");
         }
 
         Task task = Task.builder()

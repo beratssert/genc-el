@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.gencel.backend.exception.UnauthorizedActionException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -84,11 +85,12 @@ public class TaskIntegrationTest {
                 .build();
 
         when(taskService.createTask(any(CreateTaskRequest.class), eq("student@test.com")))
-                .thenThrow(new RuntimeException("Only ELDERLY users can create tasks"));
+                .thenThrow(new UnauthorizedActionException("Only ELDERLY users can create tasks"));
 
         mockMvc.perform(post("/api/v1/tasks")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Only ELDERLY users can create tasks"));
     }
 }

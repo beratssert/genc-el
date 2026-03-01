@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/models/create_user_request.dart';
 import 'package:tdp_frontend/models/user.dart';
 import 'package:tdp_frontend/repositories/institution_repo.dart';
-import 'package:tdp_frontend/services/storage_service.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 
 class CreateUserScreen extends ConsumerStatefulWidget {
   const CreateUserScreen({super.key});
@@ -38,26 +36,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     });
 
     try {
-      // Get institutionId from token
-      final storageService = ref.read(storageServiceProvider);
-      final token = await storageService.getToken();
-      print(token);
-
-      if (token == null) throw Exception("Authentication token not found.");
-
-      Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-      final String institutionId =
-          decodedToken['institutionId'] ??
-          '11111111-1111-1111-1111-111111111111';
-      print(decodedToken['institutionId']);
-      if (institutionId.isEmpty) {
-        throw Exception(
-          "Institution ID not found in token. Please login again.",
-        );
-      }
-
       final request = CreateUserRequest(
-        institutionId: institutionId,
         role: _selectedRole,
         firstName: _firstName,
         lastName: _lastName,
@@ -69,7 +48,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
             ? _iban
             : null,
       );
-
+      print(request.toString());
       await ref.read(institutionRepoProvider).createUser(request);
 
       if (mounted) {
@@ -195,7 +174,9 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                 const Center(child: CircularProgressIndicator())
               else
                 ElevatedButton(
-                  onPressed: _submit,
+                  onPressed: () {
+                    _submit();
+                  },
                   child: const Text('Create User'),
                 ),
             ],

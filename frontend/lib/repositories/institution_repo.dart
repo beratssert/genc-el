@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/models/create_user_request.dart';
 import 'package:tdp_frontend/services/api_service.dart';
+import 'package:tdp_frontend/shared/api_url.dart';
 
 /// Provider for the [InstitutionRepo] implementation.
 final institutionRepoProvider = Provider<InstitutionRepo>((ref) {
@@ -46,7 +47,10 @@ class InstitutionRepoImpl implements InstitutionRepo {
 
   @override
   Future<void> createUser(CreateUserRequest request) async {
-    await _apiService.post('/api/v1/users', data: request.toJson());
+    await _apiService.post(
+      ApiUrl.baseUrl + ApiUrl.users,
+      data: request.toJson(),
+    );
   }
 
   @override
@@ -57,7 +61,7 @@ class InstitutionRepoImpl implements InstitutionRepo {
     }
 
     final response = await _apiService.get(
-      '/api/v1/users',
+      ApiUrl.baseUrl + ApiUrl.users,
       queryParameters: queryParameters,
     );
 

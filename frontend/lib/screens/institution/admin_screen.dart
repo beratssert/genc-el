@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tdp_frontend/screens/auth/auth_screen.dart';
+import 'package:tdp_frontend/screens/auth/institution_login.dart';
 import 'package:tdp_frontend/screens/institution/create_user.dart';
 import 'package:tdp_frontend/screens/institution/members_list.dart';
 import 'package:tdp_frontend/services/storage_service.dart';
@@ -24,7 +24,9 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
             onPressed: () {
               storageService.clearAll();
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const AuthScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const InstituionLogin(),
+                ),
               );
             },
             icon: const Icon(Icons.logout),

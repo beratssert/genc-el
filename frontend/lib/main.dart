@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/models/user.dart';
-import 'package:tdp_frontend/screens/auth/auth_screen.dart';
+import 'package:tdp_frontend/screens/auth/institution_login.dart';
 import 'package:tdp_frontend/screens/beneficiary/beneficiary_main_screen.dart';
 import 'package:tdp_frontend/screens/institution/admin_screen.dart';
 import 'package:tdp_frontend/screens/student/student_screen.dart';
@@ -43,12 +43,12 @@ class MyApp extends ConsumerWidget {
           } else if (roleString == Role.ELDERLY.name) {
             return const BeneficiaryMainScreen();
           } else {
-            return const AuthScreen();
+            return const InstituionLogin();
           }
         },
         loading: () =>
             const Scaffold(body: Center(child: CircularProgressIndicator())),
-        error: (err, stack) => const AuthScreen(),
+        error: (err, stack) => const InstituionLogin(),
       ),
     );
   }

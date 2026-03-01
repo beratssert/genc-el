@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/services/api_service.dart';
+import 'package:tdp_frontend/shared/api_url.dart';
 
 /// Provider for the [AuthRepository] implementation.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -10,7 +11,12 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 /// Abstract class defining the authentication repository interface.
 abstract class AuthRepository {
   /// Logs in a user and returns a JWT token or similar.
-  Future<Map<String, dynamic>> login(String username, String password);
+  Future<Map<String, dynamic>> userLogin(String username, String password);
+
+  Future<Map<String, dynamic>> institutionLogin(
+    String username,
+    String password,
+  );
 
   /// Refreshes the existing access token.
   Future<void> refreshToken();
@@ -26,9 +32,12 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._apiService);
 
   @override
-  Future<Map<String, dynamic>> login(String username, String password) async {
+  Future<Map<String, dynamic>> userLogin(
+    String username,
+    String password,
+  ) async {
     final response = await _apiService.post(
-      '/api/v1/auth/login',
+      ApiUrl.baseUrl + ApiUrl.userLogin,
       data: {'email': username, 'password': password},
     );
     return response as Map<String, dynamic>;
@@ -42,5 +51,17 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> changePassword(String oldPassword, String newPassword) async {
     throw UnimplementedError('changePassword() has not been implemented');
+  }
+
+  @override
+  Future<Map<String, dynamic>> institutionLogin(
+    String username,
+    String password,
+  ) async {
+    final response = await _apiService.post(
+      ApiUrl.baseUrl + ApiUrl.institutionLogin,
+      data: {'email': username, 'password': password},
+    );
+    return response as Map<String, dynamic>;
   }
 }

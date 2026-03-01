@@ -3,7 +3,7 @@ class ApiUrl {
       'http://localhost:8080'; // Common local dev URL for Android emulator, change as needed
 
   //Auth
-  static const String login = '/api/v1/auth/login';
+  static const String userLogin = '/api/v1/user/login';
   static const String refreshToken = '/api/v1/auth/refresh-token';
   static const String changePassword = '/api/v1/auth/change-password';
 
@@ -15,7 +15,11 @@ class ApiUrl {
   /// DELETE - delete user /{id}
   /// GET - get user history /{id}/history
 
-  static const String users = '/api/v1/users';
+  static const String users = '/api/v1/user';
+
+  //Institution Management
+  static const String institution = '/api/v1/institution';
+  static const String institutionLogin = '/api/v1/institution/login';
 
   // Task
   /// POST - create task

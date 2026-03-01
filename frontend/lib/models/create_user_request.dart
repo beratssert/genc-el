@@ -1,7 +1,6 @@
 import 'package:tdp_frontend/models/user.dart';
 
 class CreateUserRequest {
-  final String institutionId;
   final Role role;
   final String firstName;
   final String lastName;
@@ -14,7 +13,6 @@ class CreateUserRequest {
   final String? iban;
 
   CreateUserRequest({
-    required this.institutionId,
     required this.role,
     required this.firstName,
     required this.lastName,
@@ -29,7 +27,6 @@ class CreateUserRequest {
 
   Map<String, dynamic> toJson() {
     return {
-      'institutionId': institutionId,
       'role': role.name,
       'firstName': firstName,
       'lastName': lastName,

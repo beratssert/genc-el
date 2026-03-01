@@ -2,21 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/models/user.dart';
 import 'package:tdp_frontend/repositories/auth_repo.dart';
+import 'package:tdp_frontend/screens/auth/institution_login.dart';
 import 'package:tdp_frontend/screens/beneficiary/beneficiary_main_screen.dart';
-import 'package:tdp_frontend/screens/institution/admin_screen.dart';
 import 'package:tdp_frontend/screens/student/student_screen.dart';
 import 'package:tdp_frontend/services/storage_service.dart';
 
-class AuthScreen extends ConsumerStatefulWidget {
-  const AuthScreen({super.key});
+class UserLogin extends ConsumerStatefulWidget {
+  const UserLogin({super.key});
 
   @override
-  ConsumerState<AuthScreen> createState() {
-    return _AuthScreenState();
+  ConsumerState<UserLogin> createState() {
+    return _UserLoginState();
   }
 }
 
-class _AuthScreenState extends ConsumerState<AuthScreen> {
+class _UserLoginState extends ConsumerState<UserLogin> {
   final _form = GlobalKey<FormState>();
 
   var _enteredEmail = '';
@@ -40,7 +40,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
       // Call auth repository
       final authRepo = ref.read(authRepositoryProvider);
-      final response = await authRepo.login(_enteredEmail, _enteredPassword);
+      final response = await authRepo.userLogin(
+        _enteredEmail,
+        _enteredPassword,
+      );
 
       // Save token and role if available
       final storageService = ref.read(storageServiceProvider);
@@ -66,11 +69,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
       final roleString = response['role']?.toString();
 
-      if (roleString == Role.INSTITUTION_ADMIN.name) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const AdminScreen()),
-        );
-      } else if (roleString == Role.STUDENT.name) {
+      if (roleString == Role.STUDENT.name) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const StudentScreen()),
         );
@@ -102,6 +101,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('user login'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => const InstituionLogin(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       backgroundColor: Theme.of(context).colorScheme.primary,
       body: Center(
         child: SingleChildScrollView(

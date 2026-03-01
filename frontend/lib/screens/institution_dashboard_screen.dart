@@ -104,11 +104,7 @@ class InstitutionDashboardScreen extends StatelessWidget {
                                 'Öğrenci',
                                 const Color(0xFF9333EA), // purple-600
                               ),
-                              _buildStatCard(
-                                stats['activeOrders'].toString(),
-                                'Aktif Sipariş',
-                                const Color(0xFF16A34A), // green-600
-                              ),
+
                               _buildStatCard(
                                 stats['completedThisMonth'].toString(),
                                 'Bu Ay Tamamlanan',
@@ -261,14 +257,14 @@ class InstitutionDashboardScreen extends StatelessWidget {
         height: 56, // h-14
         child: ElevatedButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 20),
+          icon: Icon(icon, size: 24),
           label: Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(
-              0xFF111827,
+              0xFF4F46E5,
             ), // matching typical shadcn primary
             foregroundColor: Colors.white,
             alignment: Alignment.centerLeft,
@@ -286,16 +282,20 @@ class InstitutionDashboardScreen extends StatelessWidget {
         height: 56, // h-14
         child: OutlinedButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 20),
+          icon: Icon(icon, size: 24, color: Color(0xFF4F46E5)),
           label: Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4F46E5),
+            ),
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFF111827), // gray-900
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            side: const BorderSide(color: Color(0xFFE5E7EB)), // gray-200
+            side: const BorderSide(color: Color(0xFF4F46E5)), // gray-200
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),

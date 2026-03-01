@@ -69,6 +69,7 @@ class TaskModel {
     required this.shoppingList,
     required this.createdAt,
     this.volunteerName,
+    this.elderlyName,
     this.totalAmountGiven,
     this.shoppingCost,
     this.changeAmount,
@@ -80,6 +81,7 @@ class TaskModel {
   final List<ShoppingItem> shoppingList;
   final DateTime createdAt;
   final String? volunteerName;
+  final String? elderlyName;
 
   /// Yaşlının öğrenciye teslim ettiği para (Teslim Edilen).
   final double? totalAmountGiven;

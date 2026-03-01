@@ -377,6 +377,7 @@ class _ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: const Row(
         children: [
@@ -394,7 +395,7 @@ class _ConfirmDialog extends StatelessWidget {
         children: [
           const Text(
             'Aşağıdaki bilgilerle sipariş oluşturulacak:',
-            style: TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+            style: TextStyle(color: Color(0xFF6B7280), fontSize: 16),
           ),
           const SizedBox(height: 14),
           _DialogInfoRow(
@@ -430,7 +431,7 @@ class _ConfirmDialog extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Onayladıktan sonra yakınındaki öğrenciler bilgilendirilecek.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF92400E)),
+                    style: TextStyle(fontSize: 14, color: Color(0xFF92400E)),
                   ),
                 ),
               ],
@@ -442,7 +443,7 @@ class _ConfirmDialog extends StatelessWidget {
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
           style: TextButton.styleFrom(foregroundColor: const Color(0xFF6B7280)),
-          child: const Text('İptal'),
+          child: const Text('İptal', style: TextStyle(color: Colors.red)),
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
@@ -478,12 +479,12 @@ class _DialogInfoRow extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
         ),
         Text(
           value,
           style: const TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF111827),
           ),

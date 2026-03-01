@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tdp_frontend/screens/student/student_home_screen.dart';
+
 import 'core/models/task_model.dart';
 
 void main() {
@@ -41,7 +42,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      home: StudentHomeScreen(
+      home: const StudentHomeScreen(
         studentName: 'Ahmet',
         completedTaskCount: 7,
         activeTask: null,

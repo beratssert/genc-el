@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppLogoHeader extends StatelessWidget {
-  const AppLogoHeader({super.key});
+  const AppLogoHeader({super.key, required this.selectedType});
+
+  final String selectedType;
 
   @override
   Widget build(BuildContext context) {
@@ -11,18 +13,26 @@ class AppLogoHeader extends StatelessWidget {
           width: 80,
           height: 80,
           decoration: BoxDecoration(
-            color: const Color(0xFFDCFCE7), // green-100
+            color: selectedType == 'elderly'
+                ? const Color(0xFFDCFCE7)
+                : Colors.blue,
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.person_outline_rounded,
+          child: Icon(
+            selectedType == 'elderly'
+                ? Icons.person_outline_rounded
+                : Icons.school_outlined,
             size: 40,
-            color: Color(0xFF16A34A), // green-600
+            color: selectedType == 'elderly'
+                ? const Color(0xFF16A34A)
+                : Colors.white,
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          'Kullanıcı Girişi',
+          selectedType == 'elderly'
+              ? 'İhtiyaç Sahibi Girişi'
+              : 'Öğrenci Girişi',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             color: const Color(0xFF111827), // gray-900

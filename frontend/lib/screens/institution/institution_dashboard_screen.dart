@@ -16,63 +16,51 @@ class InstitutionDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Gradient background: from-indigo-50 to-purple-100
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEEF2FF), // indigo-50
-              Color(0xFFF3E8FF), // purple-100
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                width: double.infinity,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 448,
-                    ), // max-w-md
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Kurum Paneli',
-                              style: TextStyle(
-                                fontSize: 20, // text-xl
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF111827), // gray-900
-                              ),
-                            ),
-                            Text(
-                              'Ankara Büyükşehir Belediyesi',
-                              style: TextStyle(
-                                fontSize: 14, // text-sm
-                                color: Color(0xFF4B5563), // gray-600
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+      appBar: AppBar(
+        title: const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kurum Paneli',
+                  style: TextStyle(
+                    fontSize: 20, // text-xl
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF111827), // gray-900
                   ),
                 ),
-              ),
-
+                Text(
+                  'Ankara Büyükşehir Belediyesi',
+                  style: TextStyle(
+                    fontSize: 14, // text-sm
+                    color: Color(0xFF4B5563), // gray-600
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
+      // Gradient background: from-indigo-50 to-purple-100
+      body: Center(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFEEF2FF), // indigo-50
+                Color(0xFFF3E8FF), // purple-100
+              ],
+            ),
+          ),
+          child: Column(
+            children: [
               // Main Content
               Expanded(
                 child: SingleChildScrollView(
@@ -104,11 +92,7 @@ class InstitutionDashboardScreen extends StatelessWidget {
                                 'Öğrenci',
                                 const Color(0xFF9333EA), // purple-600
                               ),
-                              _buildStatCard(
-                                stats['activeOrders'].toString(),
-                                'Aktif Sipariş',
-                                const Color(0xFF16A34A), // green-600
-                              ),
+
                               _buildStatCard(
                                 stats['completedThisMonth'].toString(),
                                 'Bu Ay Tamamlanan',
@@ -261,14 +245,14 @@ class InstitutionDashboardScreen extends StatelessWidget {
         height: 56, // h-14
         child: ElevatedButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 20),
+          icon: Icon(icon, size: 24),
           label: Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(
-              0xFF111827,
+              0xFF4F46E5,
             ), // matching typical shadcn primary
             foregroundColor: Colors.white,
             alignment: Alignment.centerLeft,
@@ -286,16 +270,20 @@ class InstitutionDashboardScreen extends StatelessWidget {
         height: 56, // h-14
         child: OutlinedButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 20),
+          icon: Icon(icon, size: 24, color: Color(0xFF4F46E5)),
           label: Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4F46E5),
+            ),
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFF111827), // gray-900
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            side: const BorderSide(color: Color(0xFFE5E7EB)), // gray-200
+            side: const BorderSide(color: Color(0xFF4F46E5)), // gray-200
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),

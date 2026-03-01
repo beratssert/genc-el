@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_text_field.dart';
+import '../../widgets/custom_text_field.dart';
 
 enum UserType { elderly, student }
 
@@ -117,7 +117,6 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                   ),
                 ),
               ),
-
               // Main Content
               Expanded(
                 child: SingleChildScrollView(
@@ -237,7 +236,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                   children: [
                                     CustomTextField(
                                       label: 'Ad Soyad',
-                                      hint: 'Örn: Ayşe Yılmaz',
+                                      hintText: 'Örn: Ayşe Yılmaz',
                                       prefixIcon: Icons.person_outline,
                                       controller: _nameController,
                                       keyboardType: TextInputType.name,
@@ -245,7 +244,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                     const SizedBox(height: 16),
                                     CustomTextField(
                                       label: 'Telefon Numarası',
-                                      hint: '0532 123 45 67',
+                                      hintText: '0532 123 45 67',
                                       prefixIcon: Icons.phone_outlined,
                                       controller: _phoneController,
                                       keyboardType: TextInputType.phone,
@@ -253,7 +252,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                     const SizedBox(height: 16),
                                     CustomTextField(
                                       label: 'E-posta',
-                                      hint: 'ornek@email.com',
+                                      hintText: 'ornek@email.com',
                                       prefixIcon: Icons.email_outlined,
                                       controller: _emailController,
                                       keyboardType: TextInputType.emailAddress,
@@ -261,7 +260,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                     const SizedBox(height: 16),
                                     CustomTextField(
                                       label: 'Adres',
-                                      hint: 'Tam adres giriniz',
+                                      hintText: 'Tam adres giriniz',
                                       prefixIcon: Icons.location_on_outlined,
                                       controller: _addressController,
                                       minLines: 3,
@@ -271,7 +270,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                     const SizedBox(height: 16),
                                     CustomTextField(
                                       label: 'Geçici Şifre',
-                                      hint: 'İlk giriş şifresi',
+                                      hintText: 'İlk giriş şifresi',
                                       prefixIcon: Icons.lock_outline,
                                       controller: _passwordController,
                                       obscureText: true,
@@ -286,7 +285,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                         onPressed: _handleSubmit,
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: const Color(
-                                            0xFF111827,
+                                            0xFF4F46E5,
                                           ), // gray-900
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
@@ -299,7 +298,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                         child: const Text(
                                           'Kullanıcı Oluştur',
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: 18,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),

@@ -5,7 +5,9 @@ import '../../widgets/auth/login_form.dart';
 /// Yaşlı/Engelli ve Öğrenci kullanıcılarının aynı ekrandan
 /// giriş yapabildiği kimlik doğrulama sayfası.
 class LoginScreen extends StatelessWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, required this.selectedType});
+
+  final String selectedType;
 
   @override
   Widget build(BuildContext context) {
@@ -40,41 +42,19 @@ class LoginScreen extends StatelessWidget {
                   ],
                 ),
                 padding: const EdgeInsets.all(32),
-                child: const Column(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    AppLogoHeader(),
+                    AppLogoHeader(selectedType: selectedType),
                     SizedBox(height: 32),
                     LoginForm(),
                     SizedBox(height: 16),
-                    _BackToHomeButton(),
                   ],
                 ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// "Ana Sayfaya Dön" bağlantı butonu
-// ---------------------------------------------------------------------------
-class _BackToHomeButton extends StatelessWidget {
-  const _BackToHomeButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        // TODO: Navigator.pushReplacementNamed(context, '/');
-      },
-      style: TextButton.styleFrom(foregroundColor: const Color(0xFF16A34A)),
-      child: const Text(
-        'Ana Sayfaya Dön',
-        style: TextStyle(fontWeight: FontWeight.w500),
       ),
     );
   }

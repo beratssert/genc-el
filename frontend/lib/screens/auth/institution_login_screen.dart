@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_text_field.dart';
-import 'institution_dashboard_screen.dart';
+import '../../widgets/custom_text_field.dart';
+import '../institution/institution_dashboard_screen.dart';
 
 class InstitutionLoginScreen extends StatefulWidget {
   const InstitutionLoginScreen({super.key});
@@ -13,6 +13,7 @@ class _InstitutionLoginScreenState extends State<InstitutionLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
@@ -113,18 +114,31 @@ class _InstitutionLoginScreenState extends State<InstitutionLoginScreen> {
                           children: [
                             CustomTextField(
                               label: 'E-posta',
-                              hint: 'kurum@ornek.com',
+                              hintText: 'kurum@ornek.com',
                               prefixIcon: Icons.email_outlined,
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
+                              userType: 'institution',
                             ),
                             const SizedBox(height: 24),
                             CustomTextField(
                               label: 'Şifre',
-                              hint: '••••••••',
+                              hintText: '••••••••',
                               prefixIcon: Icons.lock_outline,
                               controller: _passwordController,
-                              obscureText: true,
+                              obscureText: _obscurePassword,
+                              userType: 'institution',
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: const Color(0xFF9CA3AF),
+                                ),
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 24),
 

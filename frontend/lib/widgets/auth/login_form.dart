@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'labeled_text_field.dart';
+import '../../widgets/custom_text_field.dart';
 
 /// Kullanıcı tipini (ELDERLY / STUDENT) seçip
 /// e-posta ve şifre bilgileriyle giriş yapılan form.
@@ -59,10 +59,10 @@ class _LoginFormState extends State<LoginForm> {
             onChanged: (type) => setState(() => _selectedUserType = type),
           ),
           const SizedBox(height: 24),
-          LabeledTextField(
+          CustomTextField(
             label: 'E-posta',
-            hintText: 'ornek@mail.com',
-            prefixIcon: Icons.phone_outlined,
+            hintText: 'ornek@example.com',
+            prefixIcon: Icons.mail_outline,
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             validator: (value) {
@@ -74,7 +74,7 @@ class _LoginFormState extends State<LoginForm> {
             },
           ),
           const SizedBox(height: 20),
-          LabeledTextField(
+          CustomTextField(
             label: 'Şifre',
             hintText: '••••••••',
             prefixIcon: Icons.lock_outline_rounded,
@@ -102,7 +102,9 @@ class _LoginFormState extends State<LoginForm> {
           FilledButton(
             onPressed: _handleLogin,
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF16A34A),
+              backgroundColor: _selectedUserType == 'elderly'
+                  ? const Color(0xFF16A34A)
+                  : Colors.blue,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(50),
               shape: RoundedRectangleBorder(
@@ -145,11 +147,13 @@ class _UserTypeSelector extends StatelessWidget {
       child: Row(
         children: [
           _TabButton(
+            selectedType: selectedType,
             label: '🧓  Yaşlı / Engelli',
             isSelected: selectedType == 'elderly',
             onTap: () => onChanged('elderly'),
           ),
           _TabButton(
+            selectedType: selectedType,
             label: '🎓  Öğrenci',
             isSelected: selectedType == 'student',
             onTap: () => onChanged('student'),
@@ -165,11 +169,13 @@ class _TabButton extends StatelessWidget {
     required this.label,
     required this.isSelected,
     required this.onTap,
+    required this.selectedType,
   });
 
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+  final String selectedType;
 
   @override
   Widget build(BuildContext context) {
@@ -197,10 +203,12 @@ class _TabButton extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               color: isSelected
-                  ? const Color(0xFF16A34A)
+                  ? selectedType == 'elderly'
+                        ? const Color(0xFF16A34A)
+                        : Colors.blue
                   : const Color(0xFF6B7280),
             ),
           ),

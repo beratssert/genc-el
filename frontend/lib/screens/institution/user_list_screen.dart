@@ -19,35 +19,30 @@ class _UserListScreenState extends State<UserListScreen> {
       'name': 'Ayşe Yılmaz',
       'phone': '0532 123 45 67',
       'address': 'Çankaya, Ankara',
-      'activeOrders': 1,
     },
     {
       'id': 2,
       'name': 'Mehmet Demir',
       'phone': '0533 234 56 78',
       'address': 'Keçiören, Ankara',
-      'activeOrders': 0,
     },
     {
       'id': 3,
       'name': 'Fatma Kaya',
       'phone': '0534 345 67 89',
       'address': 'Mamak, Ankara',
-      'activeOrders': 0,
     },
     {
       'id': 4,
       'name': 'Ali Çelik',
       'phone': '0535 456 78 90',
       'address': 'Yenimahalle, Ankara',
-      'activeOrders': 1,
     },
     {
       'id': 5,
       'name': 'Zeynep Arslan',
       'phone': '0536 567 89 01',
       'address': 'Etimesgut, Ankara',
-      'activeOrders': 0,
     },
   ];
 
@@ -112,77 +107,48 @@ class _UserListScreenState extends State<UserListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEEF2FF), // indigo-50
-              Color(0xFFF3E8FF), // purple-100
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 448),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.pop(context),
-                          color: const Color(0xFF4B5563),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Kullanıcı Listesi',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF111827),
-                                ),
-                              ),
-                              Text(
-                                'Tüm kullanıcıları görüntüle',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF4B5563),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+      appBar: AppBar(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Kullanıcı Listesi',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF111827),
                     ),
                   ),
-                ),
+                  Text(
+                    'Tüm kullanıcıları görüntüle',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+                  ),
+                ],
               ),
-
+            ),
+          ],
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFEEF2FF), // indigo-50
+                Color(0xFFF3E8FF), // purple-100
+              ],
+            ),
+          ),
+          child: Column(
+            children: [
               // Main Content
               Expanded(
                 child: Center(
@@ -339,12 +305,12 @@ class _UserListScreenState extends State<UserListScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade100, // bg-amber-100
+                    color: Colors.green.shade100, // bg-amber-100
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.person,
-                    color: Colors.amber.shade700, // text-amber-600 equivalent
+                    color: Colors.green.shade700, // text-amber-600 equivalent
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -403,17 +369,6 @@ class _UserListScreenState extends State<UserListScreen> {
                           color: Color(0xFF6B7280), // text-gray-500
                         ),
                       ),
-                      if (user['activeOrders'] > 0)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            '${user['activeOrders']} aktif sipariş',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.green.shade600,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -449,12 +404,12 @@ class _UserListScreenState extends State<UserListScreen> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.green.shade100, // bg-green-100
+                    color: Colors.blue.shade100, // bg-green-100
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.school,
-                    color: Colors.green.shade600, // text-green-600
+                    color: Colors.blue.shade600, // text-green-600
                   ),
                 ),
                 const SizedBox(width: 12),

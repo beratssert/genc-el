@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_text_field.dart';
-import 'institution_dashboard_screen.dart';
+import '../../widgets/custom_text_field.dart';
+import '../institution/institution_dashboard_screen.dart';
 
 class InstitutionLoginScreen extends StatefulWidget {
   const InstitutionLoginScreen({super.key});

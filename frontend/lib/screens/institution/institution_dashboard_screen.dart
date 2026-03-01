@@ -16,63 +16,51 @@ class InstitutionDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Gradient background: from-indigo-50 to-purple-100
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEEF2FF), // indigo-50
-              Color(0xFFF3E8FF), // purple-100
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                width: double.infinity,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 448,
-                    ), // max-w-md
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Kurum Paneli',
-                              style: TextStyle(
-                                fontSize: 20, // text-xl
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF111827), // gray-900
-                              ),
-                            ),
-                            Text(
-                              'Ankara Büyükşehir Belediyesi',
-                              style: TextStyle(
-                                fontSize: 14, // text-sm
-                                color: Color(0xFF4B5563), // gray-600
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+      appBar: AppBar(
+        title: const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kurum Paneli',
+                  style: TextStyle(
+                    fontSize: 20, // text-xl
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF111827), // gray-900
                   ),
                 ),
-              ),
-
+                Text(
+                  'Ankara Büyükşehir Belediyesi',
+                  style: TextStyle(
+                    fontSize: 14, // text-sm
+                    color: Color(0xFF4B5563), // gray-600
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
+      // Gradient background: from-indigo-50 to-purple-100
+      body: Center(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFEEF2FF), // indigo-50
+                Color(0xFFF3E8FF), // purple-100
+              ],
+            ),
+          ),
+          child: Column(
+            children: [
               // Main Content
               Expanded(
                 child: SingleChildScrollView(

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tdp_frontend/screens/auth/login_screen.dart';
 import 'package:tdp_frontend/screens/elderly/elderly_home_screen.dart';
-import 'package:tdp_frontend/screens/institution_dashboard_screen.dart';
-import 'package:tdp_frontend/screens/institution_login_screen.dart';
+import 'package:tdp_frontend/screens/institution/institution_dashboard_screen.dart';
 import 'core/models/task_model.dart';
 
 void main() {
@@ -119,7 +117,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         fontFamily: 'Roboto',
       ),
-      home: InstitutionDashboardScreen(),
+      home: ElderlyHomeScreen(completedTasks: _demoCompletedTasks),
     );
   }
 }

@@ -43,7 +43,7 @@ class CategoryCard extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(category.emoji, style: const TextStyle(fontSize: 32)),
+                  Text(category.emoji, style: const TextStyle(fontSize: 48)),
                   const SizedBox(height: 6),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -53,7 +53,7 @@ class CategoryCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF374151),
                       ),

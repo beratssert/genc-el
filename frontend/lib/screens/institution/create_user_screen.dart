@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_text_field.dart';
+import '../../widgets/custom_text_field.dart';
 
 enum UserType { elderly, student }
 
@@ -46,78 +46,48 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEEF2FF), // indigo-50
-              Color(0xFFF3E8FF), // purple-100
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                width: double.infinity,
-                // shadow-sm effect
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 448),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back),
-                          onPressed: () => Navigator.pop(context),
-                          color: const Color(0xFF4B5563),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Yeni Kullanıcı',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF111827),
-                                ),
-                              ),
-                              Text(
-                                'Kullanıcı bilgilerini girin',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF4B5563),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+      appBar: AppBar(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Yeni Kullanıcı',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF111827),
                     ),
                   ),
-                ),
+                  Text(
+                    'Kullanıcı bilgilerini girin',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+                  ),
+                ],
               ),
-
+            ),
+          ],
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFFEEF2FF), // indigo-50
+                Color(0xFFF3E8FF), // purple-100
+              ],
+            ),
+          ),
+          child: Column(
+            children: [
               // Main Content
               Expanded(
                 child: SingleChildScrollView(
@@ -286,7 +256,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                         onPressed: _handleSubmit,
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: const Color(
-                                            0xFF111827,
+                                            0xFF4F46E5,
                                           ), // gray-900
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
@@ -299,7 +269,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                         child: const Text(
                                           'Kullanıcı Oluştur',
                                           style: TextStyle(
-                                            fontSize: 16,
+                                            fontSize: 18,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),

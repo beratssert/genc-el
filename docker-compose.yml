@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: genc-el-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    networks:
+      - gencel-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: genc-el-postgres
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - gencel-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: genc-el-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - gencel-network
+
+networks:
+  gencel-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

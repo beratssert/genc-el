@@ -26,10 +26,10 @@ public class BursaryHistory {
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
-    @Column(nullable = false)
+    @Column(name = "year", nullable = false) // H2 reserved word - explicit name
     private Integer year;
 
-    @Column(nullable = false)
+    @Column(name = "month", nullable = false) // H2 reserved word - explicit name
     private Integer month;
 
     @Column(name = "completed_task_count")

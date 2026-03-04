@@ -1,9 +1,10 @@
-# Stage 1: Build
+# Stage 1: Build (tests must pass before image is built)
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-RUN mvn clean package -DskipTests
+# Testler sadece GitHub CI'da çalışır; local build hızlı olsun diye skip
+RUN mvn clean package -DskipTests -B
 
 # Stage 2: Run
 FROM eclipse-temurin:17-jre

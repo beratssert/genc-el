@@ -39,9 +39,10 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/user/login", "/api/v1/institution/login").permitAll()
+                        .requestMatchers("/api/v1/institution", "/api/v1/institution/**").permitAll() // Geçici: Kurum CRUD herkese açık
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("POST", "/api/v1/users").hasRole("INSTITUTION_ADMIN")
-                        .requestMatchers("GET", "/api/v1/users").hasRole("INSTITUTION_ADMIN")
+                        .requestMatchers("POST", "/api/v1/user").hasRole("INSTITUTION_ADMIN")
+                        .requestMatchers("GET", "/api/v1/user").hasRole("INSTITUTION_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

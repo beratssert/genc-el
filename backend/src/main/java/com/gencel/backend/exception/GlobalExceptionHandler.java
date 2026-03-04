@@ -32,22 +32,24 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
-    public ResponseEntity<Map<String, String>> handleDisabledException(org.springframework.security.authentication.DisabledException ex) {
+    public ResponseEntity<Map<String, String>> handleDisabledException(
+            org.springframework.security.authentication.DisabledException ex) {
         Map<String, String> error = new HashMap<>();
         error.put("error", "Hesabınız devre dışı bırakılmıştır");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     @ExceptionHandler(org.springframework.security.authentication.LockedException.class)
-    public ResponseEntity<Map<String, String>> handleLockedException(org.springframework.security.authentication.LockedException ex) {
+    public ResponseEntity<Map<String, String>> handleLockedException(
+            org.springframework.security.authentication.LockedException ex) {
         Map<String, String> error = new HashMap<>();
         error.put("error", "Hesabınız kilitlenmiştir");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
     @ExceptionHandler({
-        org.springframework.security.authentication.BadCredentialsException.class,
-        org.springframework.security.core.userdetails.UsernameNotFoundException.class
+            org.springframework.security.authentication.BadCredentialsException.class,
+            org.springframework.security.core.userdetails.UsernameNotFoundException.class
     })
     public ResponseEntity<Map<String, String>> handleBadCredentialsException(Exception ex) {
         Map<String, String> error = new HashMap<>();
@@ -56,10 +58,18 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
-    public ResponseEntity<Map<String, String>> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+    public ResponseEntity<Map<String, String>> handleAuthenticationException(
+            org.springframework.security.core.AuthenticationException ex) {
         Map<String, String> error = new HashMap<>();
         error.put("error", "Kimlik doğrulama başarısız oldu");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(UnauthorizedActionException.class)
+    public ResponseEntity<Map<String, String>> handleUnauthorizedActionException(UnauthorizedActionException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
     @ExceptionHandler(Exception.class)

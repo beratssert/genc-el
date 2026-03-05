@@ -14,4 +14,7 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     List<Task> findByRequesterId(UUID requesterId);
 
     List<Task> findByVolunteerId(UUID volunteerId);
+
+    long countByVolunteerIdAndStatusAndUpdatedAtBetween(UUID volunteerId, Task.TaskStatus status,
+            java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

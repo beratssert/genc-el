@@ -1,6 +1,7 @@
 package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.repository.UserRepository;
@@ -95,6 +96,53 @@ public class UserService {
                 .filter(user -> user.getRole() != User.UserRole.INSTITUTION_ADMIN) // Adminleri (kendini) listeden çıkart
                 .map(this::mapToUserResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getMyProfile(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return mapToUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse updateMyProfile(String email, UpdateUserProfileRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getEmail() != null) {
+            user.setEmail(request.getEmail());
+        }
+        if (request.getAddress() != null) {
+            user.setAddress(request.getAddress());
+        }
+        if (request.getIban() != null) {
+            // IBAN sadece öğrenci için anlamlı; öğrenci ise boş bırakılamaz
+            if (user.getRole() == User.UserRole.STUDENT && request.getIban().isBlank()) {
+                throw new IllegalArgumentException("IBAN is required for STUDENT role");
+            }
+            user.setIban(request.getIban());
+        }
+
+        user = userRepository.save(user);
+        return mapToUserResponse(user);
+    }
+
+    @Transactional
+    public void deactivateMyAccount(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        // Soft-delete: @SQLDelete ile is_active=false olarak işaretlenecek
+        userRepository.delete(user);
     }
 
     private UserResponse mapToUserResponse(User user) {

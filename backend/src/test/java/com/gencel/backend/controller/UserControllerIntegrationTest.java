@@ -3,6 +3,7 @@ package com.gencel.backend.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.LoginRequest;
+import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.repository.InstitutionRepository;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -226,6 +226,67 @@ class UserControllerIntegrationTest {
                             .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray());
+        }
+    }
+
+    @Nested
+    @DisplayName("Profile endpoints /api/v1/user/me")
+    class ProfileEndpoints {
+
+        @Test
+        @DisplayName("GET /me giriş yapmış kullanıcı profilini döner")
+        void shouldGetMyProfile() throws Exception {
+            mockMvc.perform(get("/api/v1/user/me")
+                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.email").value(institutionAdmin.getEmail()))
+                    .andExpect(jsonPath("$.role").value("INSTITUTION_ADMIN"));
+        }
+
+        @Test
+        @DisplayName("PUT /me profil alanlarını günceller")
+        void shouldUpdateMyProfile() throws Exception {
+            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                    .firstName("UpdatedName")
+                    .phoneNumber("0500 111 22 33")
+                    .build();
+
+            mockMvc.perform(put("/api/v1/user/me")
+                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.firstName").value("UpdatedName"))
+                    .andExpect(jsonPath("$.phoneNumber").value("0500 111 22 33"));
+        }
+
+        @Test
+        @DisplayName("PUT /me geçersiz email ile 400 döner")
+        void shouldReturnBadRequestOnInvalidEmail() throws Exception {
+            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                    .email("not-an-email")
+                    .build();
+
+            mockMvc.perform(put("/api/v1/user/me")
+                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("DELETE /me hesabı dondurur ve 204 döner")
+        void shouldDeactivateMyAccount() throws Exception {
+            mockMvc.perform(delete("/api/v1/user/me")
+                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("GET /me anonymous istek için 401 döner")
+        void shouldReturnUnauthorizedWhenAnonymous() throws Exception {
+            mockMvc.perform(get("/api/v1/user/me"))
+                    .andExpect(status().isForbidden());
         }
     }
 }

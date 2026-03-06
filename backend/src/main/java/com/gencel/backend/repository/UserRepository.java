@@ -21,4 +21,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByInstitutionIdOrderByCreatedAtDesc(UUID institutionId);
 
     List<User> findByInstitutionIdAndRoleOrderByCreatedAtDesc(UUID institutionId, User.UserRole role);
+
+    List<User> findByRole(User.UserRole role);
 }

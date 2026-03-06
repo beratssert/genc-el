@@ -303,6 +303,21 @@ public class TaskServiceTest {
         assertEquals("Task is not in ASSIGNED status", exception.getMessage());
     }
 
+    @Test
+    void startTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.startTask(task.getId(), studentUser.getEmail(), request));
+
+        assertEquals("Task not found", exception.getMessage());
+    }
+
     // --- deliverTask Tests ---
 
     @Test
@@ -342,6 +357,21 @@ public class TaskServiceTest {
                 () -> taskService.deliverTask(task.getId(), studentUser.getEmail(), request));
 
         assertEquals("Task is not IN_PROGRESS", exception.getMessage());
+    }
+
+    @Test
+    void deliverTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        DeliverTaskRequest request = DeliverTaskRequest.builder()
+                .changeAmount(java.math.BigDecimal.valueOf(10.0))
+                .build();
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.deliverTask(task.getId(), studentUser.getEmail(), request));
+
+        assertEquals("Task not found", exception.getMessage());
     }
 
     // --- completeTask Tests ---
@@ -385,6 +415,17 @@ public class TaskServiceTest {
                 () -> taskService.completeTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Task must be DELIVERED before it can be completed", exception.getMessage());
+    }
+
+    @Test
+    void completeTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.completeTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
     }
 
     // --- cancelTask Tests ---
@@ -443,5 +484,16 @@ public class TaskServiceTest {
                 () -> taskService.cancelTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Cannot cancel a completed or delivered task", exception.getMessage());
+    }
+
+    @Test
+    void cancelTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.cancelTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
     }
 }

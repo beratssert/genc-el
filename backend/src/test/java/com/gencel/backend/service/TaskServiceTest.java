@@ -7,6 +7,8 @@ import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.exception.InvalidTaskStateException;
+import com.gencel.backend.exception.TaskNotFoundException;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
@@ -224,7 +226,7 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () ->
                 taskService.assignTask(task.getId(), studentUser.getEmail()));
 
         assertEquals("Task not found", exception.getMessage());
@@ -238,7 +240,7 @@ public class TaskServiceTest {
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
         when(taskRepository.assignIfPending(task.getId(), studentUser)).thenReturn(0);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.assignTask(task.getId(), studentUser.getEmail()));
 
         assertEquals("Task is not in PENDING status", exception.getMessage());
@@ -295,7 +297,7 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.startTask(task.getId(), studentUser.getEmail(), request));
 
         assertEquals("Task is not in ASSIGNED status", exception.getMessage());
@@ -336,7 +338,7 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.deliverTask(task.getId(), studentUser.getEmail(), request));
 
         assertEquals("Task is not IN_PROGRESS", exception.getMessage());
@@ -379,7 +381,7 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.completeTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Task must be DELIVERED before it can be completed", exception.getMessage());
@@ -437,7 +439,7 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.cancelTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Cannot cancel a completed or delivered task", exception.getMessage());

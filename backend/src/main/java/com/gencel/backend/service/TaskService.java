@@ -7,6 +7,8 @@ import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.exception.InvalidTaskStateException;
+import com.gencel.backend.exception.TaskNotFoundException;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
@@ -85,16 +87,16 @@ public class TaskService {
         }
 
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         int updated = taskRepository.assignIfPending(taskId, volunteer);
         if (updated == 0) {
-            throw new RuntimeException("Task is not in PENDING status");
+            throw new InvalidTaskStateException("Task is not in PENDING status");
         }
 
         // Reload updated task state
         task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         logAction(task, volunteer, TaskLog.TaskLogAction.ASSIGNED, "Task assigned to student volunteer.");
 
@@ -106,7 +108,7 @@ public class TaskService {
         Task task = getAssignedTaskForStudent(taskId, email);
 
         if (!Task.TaskStatus.ASSIGNED.equals(task.getStatus())) {
-            throw new RuntimeException("Task is not in ASSIGNED status");
+            throw new InvalidTaskStateException("Task is not in ASSIGNED status");
         }
 
         task.setStatus(Task.TaskStatus.IN_PROGRESS);
@@ -123,7 +125,7 @@ public class TaskService {
         Task task = getAssignedTaskForStudent(taskId, email);
 
         if (!Task.TaskStatus.IN_PROGRESS.equals(task.getStatus())) {
-            throw new RuntimeException("Task is not IN_PROGRESS");
+            throw new InvalidTaskStateException("Task is not IN_PROGRESS");
         }
 
         task.setStatus(Task.TaskStatus.DELIVERED);
@@ -142,14 +144,14 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         if (!task.getRequester().getId().equals(requester.getId())) {
             throw new UnauthorizedActionException("Only the requester can complete this task");
         }
 
         if (!Task.TaskStatus.DELIVERED.equals(task.getStatus())) {
-            throw new RuntimeException("Task must be DELIVERED before it can be completed");
+            throw new InvalidTaskStateException("Task must be DELIVERED before it can be completed");
         }
 
         task.setStatus(Task.TaskStatus.COMPLETED);
@@ -166,7 +168,7 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         // Only requester or assigned volunteer can cancel
         boolean isRequester = task.getRequester() != null && task.getRequester().getId().equals(user.getId());
@@ -177,7 +179,7 @@ public class TaskService {
         }
 
         if (Task.TaskStatus.DELIVERED.equals(task.getStatus()) || Task.TaskStatus.COMPLETED.equals(task.getStatus())) {
-            throw new RuntimeException("Cannot cancel a completed or delivered task");
+            throw new InvalidTaskStateException("Cannot cancel a completed or delivered task");
         }
 
         if (isVolunteer) {
@@ -200,7 +202,7 @@ public class TaskService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         if (task.getVolunteer() == null || !task.getVolunteer().getId().equals(volunteer.getId())) {
             throw new UnauthorizedActionException("You are not assigned to this task");

@@ -6,6 +6,7 @@ import com.gencel.backend.dto.DeliverTaskRequest;
 import com.gencel.backend.dto.StartTaskRequest;
 import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.entity.Task;
+import com.gencel.backend.exception.TaskNotFoundException;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.service.TaskService;
 import org.junit.jupiter.api.Test;
@@ -150,11 +151,11 @@ public class TaskIntegrationTest {
         void assignTask_TaskNotFound() throws Exception {
                 UUID taskId = UUID.randomUUID();
                 when(taskService.assignTask(taskId, "student@test.com"))
-                                .thenThrow(new RuntimeException("Task not found"));
+                                .thenThrow(new TaskNotFoundException("Task not found"));
 
                 mockMvc.perform(put("/api/v1/tasks/{taskId}/assign", taskId)
                                 .contentType(MediaType.APPLICATION_JSON))
-                                .andExpect(status().isInternalServerError())
+                                .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.error").exists());
         }
 

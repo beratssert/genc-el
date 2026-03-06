@@ -402,7 +402,8 @@ public class TaskServiceTest {
         TaskResponse response = taskService.cancelTask(task.getId(), studentUser.getEmail());
 
         assertNotNull(response);
-        assertEquals(Task.TaskStatus.CANCELLED.name(), response.getStatus());
+        assertEquals(Task.TaskStatus.PENDING.name(), response.getStatus());
+        assertNull(response.getVolunteerId());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
     }

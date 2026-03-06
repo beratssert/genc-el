@@ -179,7 +179,14 @@ public class TaskService {
             throw new RuntimeException("Cannot cancel a completed or delivered task");
         }
 
-        task.setStatus(Task.TaskStatus.CANCELLED);
+        if (isVolunteer) {
+            // Volunteer leaves the task: return to pool
+            task.setVolunteer(null);
+            task.setStatus(Task.TaskStatus.PENDING);
+        } else {
+            // Requester cancels completely
+            task.setStatus(Task.TaskStatus.CANCELLED);
+        }
         task = taskRepository.save(task);
 
         logAction(task, user, TaskLog.TaskLogAction.CANCELLED, "Task cancelled by user.");

@@ -2,6 +2,7 @@ package com.gencel.backend.repository;
 
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,10 +15,13 @@ import java.util.UUID;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, UUID> {
+    @EntityGraph(attributePaths = { "requester", "volunteer" })
     List<Task> findByStatus(Task.TaskStatus status);
 
+    @EntityGraph(attributePaths = { "requester", "volunteer" })
     List<Task> findByRequesterId(UUID requesterId);
 
+    @EntityGraph(attributePaths = { "requester", "volunteer" })
     List<Task> findByVolunteerId(UUID volunteerId);
 
     long countByVolunteerIdAndStatus(UUID volunteerId, Task.TaskStatus status);

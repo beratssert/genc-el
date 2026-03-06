@@ -177,8 +177,11 @@ public class TaskIntegrationTest {
         @WithMockUser(username = "student@test.com", roles = "STUDENT")
         void startTask_Success() throws Exception {
                 UUID taskId = UUID.randomUUID();
-                StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(150.5).build();
-                TaskResponse response = TaskResponse.builder().id(taskId).status("IN_PROGRESS").totalAmountGiven(150.5)
+                StartTaskRequest request = StartTaskRequest.builder()
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(150.5))
+                                .build();
+                TaskResponse response = TaskResponse.builder().id(taskId).status("IN_PROGRESS")
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(150.5))
                                 .build();
 
                 when(taskService.startTask(taskId, "student@test.com", request)).thenReturn(response);
@@ -195,7 +198,9 @@ public class TaskIntegrationTest {
         @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
         void startTask_Unauthorized() throws Exception {
                 UUID taskId = UUID.randomUUID();
-                StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(150.5).build();
+                StartTaskRequest request = StartTaskRequest.builder()
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(150.5))
+                                .build();
 
                 when(taskService.startTask(taskId, "elderly@test.com", request))
                                 .thenThrow(new UnauthorizedActionException("You are not assigned to this task"));
@@ -214,12 +219,12 @@ public class TaskIntegrationTest {
         void deliverTask_Success() throws Exception {
                 UUID taskId = UUID.randomUUID();
                 DeliverTaskRequest request = DeliverTaskRequest.builder()
-                                .changeAmount(5.0)
+                                .changeAmount(java.math.BigDecimal.valueOf(5.0))
                                 .receiptImageUrl("http://example.com/receipt.jpg")
                                 .build();
                 TaskResponse response = TaskResponse.builder()
                                 .id(taskId).status("DELIVERED")
-                                .changeAmount(5.0)
+                                .changeAmount(java.math.BigDecimal.valueOf(5.0))
                                 .receiptImageUrl("http://example.com/receipt.jpg")
                                 .build();
 

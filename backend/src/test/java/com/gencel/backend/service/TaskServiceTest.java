@@ -240,7 +240,9 @@ public class TaskServiceTest {
 
     @Test
     void startTask_Success() {
-        StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(100.0).build();
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
         task.setVolunteer(studentUser);
         task.setStatus(Task.TaskStatus.ASSIGNED);
 
@@ -252,7 +254,7 @@ public class TaskServiceTest {
 
         assertNotNull(response);
         assertEquals(Task.TaskStatus.IN_PROGRESS.name(), response.getStatus());
-        assertEquals(100.0, response.getTotalAmountGiven());
+        assertEquals(java.math.BigDecimal.valueOf(100.0), response.getTotalAmountGiven());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
     }
@@ -275,7 +277,9 @@ public class TaskServiceTest {
 
     @Test
     void startTask_ThrowsException_WhenTaskNotAssigned() {
-        StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(100.0).build();
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
         task.setVolunteer(studentUser);
         task.setStatus(Task.TaskStatus.PENDING); // Not ASSIGNED
 
@@ -293,7 +297,7 @@ public class TaskServiceTest {
     @Test
     void deliverTask_Success() {
         DeliverTaskRequest request = DeliverTaskRequest.builder()
-                .changeAmount(10.0)
+                .changeAmount(java.math.BigDecimal.valueOf(10.0))
                 .receiptImageUrl("http://example.com/receipt.jpg")
                 .build();
 
@@ -308,7 +312,7 @@ public class TaskServiceTest {
 
         assertNotNull(response);
         assertEquals(Task.TaskStatus.DELIVERED.name(), response.getStatus());
-        assertEquals(10.0, response.getChangeAmount());
+        assertEquals(java.math.BigDecimal.valueOf(10.0), response.getChangeAmount());
         assertEquals("http://example.com/receipt.jpg", response.getReceiptImageUrl());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));

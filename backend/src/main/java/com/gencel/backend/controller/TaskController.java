@@ -70,7 +70,7 @@ public class TaskController {
         @PutMapping("/{taskId}/start")
         public ResponseEntity<TaskResponse> startTask(
                         @Parameter(description = "Başlanacak görevin ID'si", required = true) @PathVariable UUID taskId,
-                        @RequestBody StartTaskRequest request,
+                        @RequestBody @jakarta.validation.Valid StartTaskRequest request,
                         @Parameter(hidden = true) Authentication authentication) {
                 return ResponseEntity.ok(taskService.startTask(taskId, authentication.getName(), request));
         }
@@ -79,7 +79,7 @@ public class TaskController {
         @PutMapping("/{taskId}/deliver")
         public ResponseEntity<TaskResponse> deliverTask(
                         @Parameter(description = "Teslim edilecek görevin ID'si", required = true) @PathVariable UUID taskId,
-                        @RequestBody DeliverTaskRequest request,
+                        @RequestBody @jakarta.validation.Valid DeliverTaskRequest request,
                         @Parameter(hidden = true) Authentication authentication) {
                 return ResponseEntity.ok(taskService.deliverTask(taskId, authentication.getName(), request));
         }

@@ -177,15 +177,23 @@ public class TaskServiceTest {
     @Test
     void assignTask_Success() {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
-        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+        Task assignedTask = Task.builder()
+                .id(task.getId())
+                .requester(elderlyUser)
+                .volunteer(studentUser)
+                .status(Task.TaskStatus.ASSIGNED)
+                .shoppingList(task.getShoppingList())
+                .note(task.getNote())
+                .isActive(true)
+                .build();
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task), Optional.of(assignedTask));
+        when(taskRepository.assignIfPending(task.getId(), studentUser)).thenReturn(1);
 
         TaskResponse response = taskService.assignTask(task.getId(), studentUser.getEmail());
 
         assertNotNull(response);
         assertEquals(Task.TaskStatus.ASSIGNED.name(), response.getStatus());
         assertEquals(studentUser.getId(), response.getVolunteerId());
-        verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
     }
 
@@ -228,6 +236,7 @@ public class TaskServiceTest {
         task.setStatus(Task.TaskStatus.ASSIGNED);
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.assignIfPending(task.getId(), studentUser)).thenReturn(0);
 
         RuntimeException exception = assertThrows(RuntimeException.class,
                 () -> taskService.assignTask(task.getId(), studentUser.getEmail()));

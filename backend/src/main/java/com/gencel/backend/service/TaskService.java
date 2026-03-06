@@ -87,13 +87,14 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
-        if (!Task.TaskStatus.PENDING.equals(task.getStatus())) {
+        int updated = taskRepository.assignIfPending(taskId, volunteer);
+        if (updated == 0) {
             throw new RuntimeException("Task is not in PENDING status");
         }
 
-        task.setVolunteer(volunteer);
-        task.setStatus(Task.TaskStatus.ASSIGNED);
-        task = taskRepository.save(task);
+        // Reload updated task state
+        task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
 
         logAction(task, volunteer, TaskLog.TaskLogAction.ASSIGNED, "Task assigned to student volunteer.");
 

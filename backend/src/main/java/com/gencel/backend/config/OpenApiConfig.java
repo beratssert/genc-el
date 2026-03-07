@@ -15,12 +15,13 @@ import org.springframework.context.annotation.Configuration;
                 title = "Genc-El API Documentation",
                 description = """
                         Genc-El Projesi için REST API dökümantasyonu.
-
+                        
                         Kullanım önerisi:
-                        1. Kurum yöneticisi girişi için: `POST /api/v1/institution/login`
-                        2. Öğrenci / yaşlı kullanıcı girişi için: `POST /api/v1/user/login`
-                        3. Dönen JWT token'ı sağ üstteki **Authorize** butonuna tıklayarak `Bearer <token>` formatında girin.
-                        4. Ardından kurum ve kullanıcı yönetimi ile ilgili güvenli endpoint'leri (User Management, Institution Management) Swagger UI üzerinden rahatça test edebilirsiniz.
+                        1. Süper admin girişi için: `POST /api/v1/admin/login` (SYSTEM_ADMIN)
+                        2. Kurum yöneticisi girişi için: `POST /api/v1/institution/login` (INSTITUTION_ADMIN)
+                        3. Öğrenci / yaşlı kullanıcı girişi için: `POST /api/v1/user/login` (STUDENT, ELDERLY)
+                        4. Dönen JWT token'ı sağ üstteki **Authorize** butonuna tıklayarak `Bearer <token>` formatında girin.
+                        5. Ardından kurum, kullanıcı ve görev yönetimi ile ilgili güvenli endpoint'leri (User Management, Institution Management vb.) Swagger UI üzerinden rahatça test edebilirsiniz.
                         """,
                 version = "1.0",
                 contact = @Contact(

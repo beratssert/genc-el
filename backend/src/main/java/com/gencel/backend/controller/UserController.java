@@ -93,7 +93,7 @@ public class UserController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSTITUTION_ADMIN','SYSTEM_ADMIN')")
     @Operation(
             summary = "Kurum kullanıcısı oluştur",
             description = "Sadece INSTITUTION_ADMIN rolüne sahip kurum yöneticilerinin, kendi kurumuna bağlı STUDENT veya ELDERLY kullanıcı oluşturmasını sağlar."
@@ -112,7 +112,7 @@ public class UserController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSTITUTION_ADMIN','SYSTEM_ADMIN')")
     @Operation(
             summary = "Kurum kullanıcılarını listele",
             description = "Sadece INSTITUTION_ADMIN tarafından çağrılabilir. Kurum yöneticisinin kendi kurumuna bağlı kullanıcıları listeler; isteğe bağlı rol filtresi ile (STUDENT, ELDERLY) filtreleme yapılabilir."

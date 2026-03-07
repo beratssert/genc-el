@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,11 +41,11 @@ public class InstitutionController {
     }
 
     @PostMapping
-    // @PreAuthorize("hasRole('SYSTEM_ADMIN')") // İleride sadece sistem yöneticilerine açılabilir.
     @Operation(
             summary = "Yeni kurum oluştur",
-            description = "Yeni bir kurum kaydı oluşturur. Geçici olarak herkese açık; ileride sadece sistem yöneticilerine sınırlandırılabilir."
+            description = "Yeni bir kurum kaydı oluşturur. Sadece SYSTEM_ADMIN (süper admin) tarafından çağrılabilir."
     )
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<InstitutionResponse> createInstitution(@Valid @RequestBody CreateInstitutionRequest request) {
         InstitutionResponse response = institutionService.createInstitution(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -53,8 +54,9 @@ public class InstitutionController {
     @GetMapping
     @Operation(
             summary = "Tüm kurumları listele",
-            description = "Sistemde kayıtlı tüm kurumları listeler."
+            description = "Sistemde kayıtlı tüm kurumları listeler. Sadece SYSTEM_ADMIN (süper admin) tarafından çağrılabilir."
     )
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<List<InstitutionResponse>> getAllInstitutions() {
         List<InstitutionResponse> responses = institutionService.getAllInstitutions();
         return ResponseEntity.ok(responses);
@@ -63,8 +65,9 @@ public class InstitutionController {
     @GetMapping("/{id}")
     @Operation(
             summary = "ID ile kurum getir",
-            description = "Verilen kurum ID'sine göre kurum detaylarını döner."
+            description = "Verilen kurum ID'sine göre kurum detaylarını döner. Sadece SYSTEM_ADMIN (süper admin) tarafından çağrılabilir."
     )
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<InstitutionResponse> getInstitutionById(@PathVariable UUID id) {
         InstitutionResponse response = institutionService.getInstitutionById(id);
         return ResponseEntity.ok(response);

@@ -6,6 +6,7 @@ import com.gencel.backend.dto.LoginRequest;
 import com.gencel.backend.dto.LoginResponse;
 import com.gencel.backend.service.AuthService;
 import com.gencel.backend.service.InstitutionService;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -71,5 +73,48 @@ public class InstitutionController {
     public ResponseEntity<InstitutionResponse> getInstitutionById(@PathVariable UUID id) {
         InstitutionResponse response = institutionService.getInstitutionById(id);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/me")
+    @Operation(
+            summary = "Kurumumun bilgilerini güncelle",
+            description = "Giriş yapmış kurum yöneticisinin (INSTITUTION_ADMIN) kendi kurumunun ad, bölge ve iletişim bilgilerini günceller."
+    )
+    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    public ResponseEntity<InstitutionResponse> updateMyInstitution(
+            @Parameter(hidden = true) Authentication authentication,
+            @Valid @RequestBody CreateInstitutionRequest request
+    ) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        InstitutionResponse response = institutionService.updateMyInstitution(email, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(
+            summary = "Kurumu güncelle",
+            description = "Var olan bir kurum kaydını günceller. Sadece SYSTEM_ADMIN (süper admin) tarafından çağrılabilir."
+    )
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<InstitutionResponse> updateInstitution(
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateInstitutionRequest request
+    ) {
+        InstitutionResponse response = institutionService.updateInstitution(id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(
+            summary = "Kurumu sil (soft-delete)",
+            description = "Kurum kaydını soft-delete eder (is_active=false). Sadece SYSTEM_ADMIN (süper admin) tarafından çağrılabilir."
+    )
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<Void> deleteInstitution(@PathVariable UUID id) {
+        institutionService.deleteInstitution(id);
+        return ResponseEntity.noContent().build();
     }
 }

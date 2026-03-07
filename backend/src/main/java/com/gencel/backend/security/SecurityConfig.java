@@ -3,6 +3,7 @@ package com.gencel.backend.security;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -38,11 +39,15 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/user/login", "/api/v1/institution/login").permitAll()
-                        .requestMatchers("/api/v1/institution", "/api/v1/institution/**").permitAll() // Geçici: Kurum CRUD herkese açık
+                        .requestMatchers("/api/v1/user/login", "/api/v1/institution/login", "/api/v1/admin/login").permitAll()
+                        // Kurum yöneticisinin kendi kurumunu güncellemesi
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
+                        // Institution CRUD sadece SYSTEM_ADMIN için
+                        .requestMatchers("/api/v1/institution", "/api/v1/institution/**").hasRole("SYSTEM_ADMIN")
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("POST", "/api/v1/user").hasRole("INSTITUTION_ADMIN")
-                        .requestMatchers("GET", "/api/v1/user").hasRole("INSTITUTION_ADMIN")
+                        // Kurum yöneticisi işlemleri: INSTITUTION_ADMIN ve SYSTEM_ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/user").hasAnyRole("INSTITUTION_ADMIN", "SYSTEM_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/user").hasAnyRole("INSTITUTION_ADMIN", "SYSTEM_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

@@ -6,6 +6,8 @@ import com.gencel.backend.dto.DeliverTaskRequest;
 import com.gencel.backend.dto.StartTaskRequest;
 import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.entity.Task;
+import com.gencel.backend.exception.InvalidTaskStateException;
+import com.gencel.backend.exception.TaskNotFoundException;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.service.TaskService;
 import org.junit.jupiter.api.Test;
@@ -150,12 +152,25 @@ public class TaskIntegrationTest {
         void assignTask_TaskNotFound() throws Exception {
                 UUID taskId = UUID.randomUUID();
                 when(taskService.assignTask(taskId, "student@test.com"))
-                                .thenThrow(new RuntimeException("Task not found"));
+                                .thenThrow(new TaskNotFoundException("Task not found"));
 
                 mockMvc.perform(put("/api/v1/tasks/{taskId}/assign", taskId)
                                 .contentType(MediaType.APPLICATION_JSON))
-                                .andExpect(status().isInternalServerError())
+                                .andExpect(status().isNotFound())
                                 .andExpect(jsonPath("$.error").exists());
+        }
+
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void assignTask_InvalidState_BadRequest() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                when(taskService.assignTask(taskId, "student@test.com"))
+                                .thenThrow(new InvalidTaskStateException("Task is not in PENDING status"));
+
+                mockMvc.perform(put("/api/v1/tasks/{taskId}/assign", taskId)
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.error").value("Task is not in PENDING status"));
         }
 
         @Test
@@ -177,8 +192,11 @@ public class TaskIntegrationTest {
         @WithMockUser(username = "student@test.com", roles = "STUDENT")
         void startTask_Success() throws Exception {
                 UUID taskId = UUID.randomUUID();
-                StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(150.5).build();
-                TaskResponse response = TaskResponse.builder().id(taskId).status("IN_PROGRESS").totalAmountGiven(150.5)
+                StartTaskRequest request = StartTaskRequest.builder()
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(150.5))
+                                .build();
+                TaskResponse response = TaskResponse.builder().id(taskId).status("IN_PROGRESS")
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(150.5))
                                 .build();
 
                 when(taskService.startTask(taskId, "student@test.com", request)).thenReturn(response);
@@ -192,10 +210,28 @@ public class TaskIntegrationTest {
         }
 
         @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void startTask_ValidationError_WhenNegativeAmount() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                // negative totalAmountGiven violates @PositiveOrZero
+                String invalidJson = """
+                        { "totalAmountGiven": -10.0 }
+                        """;
+
+                mockMvc.perform(put("/api/v1/tasks/{taskId}/start", taskId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(invalidJson))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.totalAmountGiven").exists());
+        }
+
+        @Test
         @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
         void startTask_Unauthorized() throws Exception {
                 UUID taskId = UUID.randomUUID();
-                StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(150.5).build();
+                StartTaskRequest request = StartTaskRequest.builder()
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(150.5))
+                                .build();
 
                 when(taskService.startTask(taskId, "elderly@test.com", request))
                                 .thenThrow(new UnauthorizedActionException("You are not assigned to this task"));
@@ -214,12 +250,12 @@ public class TaskIntegrationTest {
         void deliverTask_Success() throws Exception {
                 UUID taskId = UUID.randomUUID();
                 DeliverTaskRequest request = DeliverTaskRequest.builder()
-                                .changeAmount(5.0)
+                                .changeAmount(java.math.BigDecimal.valueOf(5.0))
                                 .receiptImageUrl("http://example.com/receipt.jpg")
                                 .build();
                 TaskResponse response = TaskResponse.builder()
                                 .id(taskId).status("DELIVERED")
-                                .changeAmount(5.0)
+                                .changeAmount(java.math.BigDecimal.valueOf(5.0))
                                 .receiptImageUrl("http://example.com/receipt.jpg")
                                 .build();
 
@@ -231,6 +267,22 @@ public class TaskIntegrationTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.status").value("DELIVERED"))
                                 .andExpect(jsonPath("$.changeAmount").value(5.0));
+        }
+
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void deliverTask_ValidationError_WhenNegativeChangeAmount() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                // negative changeAmount violates @PositiveOrZero
+                String invalidJson = """
+                        { "changeAmount": -5.0 }
+                        """;
+
+                mockMvc.perform(put("/api/v1/tasks/{taskId}/deliver", taskId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(invalidJson))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.changeAmount").exists());
         }
 
         // --- COMPLETE TASK ---

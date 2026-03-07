@@ -7,6 +7,8 @@ import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.exception.InvalidTaskStateException;
+import com.gencel.backend.exception.TaskNotFoundException;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
@@ -177,15 +179,23 @@ public class TaskServiceTest {
     @Test
     void assignTask_Success() {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
-        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
-        when(taskRepository.save(any(Task.class))).thenReturn(task);
+        Task assignedTask = Task.builder()
+                .id(task.getId())
+                .requester(elderlyUser)
+                .volunteer(studentUser)
+                .status(Task.TaskStatus.ASSIGNED)
+                .shoppingList(task.getShoppingList())
+                .note(task.getNote())
+                .isActive(true)
+                .build();
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task), Optional.of(assignedTask));
+        when(taskRepository.assignIfPending(task.getId(), studentUser)).thenReturn(1);
 
         TaskResponse response = taskService.assignTask(task.getId(), studentUser.getEmail());
 
         assertNotNull(response);
         assertEquals(Task.TaskStatus.ASSIGNED.name(), response.getStatus());
         assertEquals(studentUser.getId(), response.getVolunteerId());
-        verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
     }
 
@@ -216,7 +226,7 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () ->
                 taskService.assignTask(task.getId(), studentUser.getEmail()));
 
         assertEquals("Task not found", exception.getMessage());
@@ -228,8 +238,9 @@ public class TaskServiceTest {
         task.setStatus(Task.TaskStatus.ASSIGNED);
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.assignIfPending(task.getId(), studentUser)).thenReturn(0);
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.assignTask(task.getId(), studentUser.getEmail()));
 
         assertEquals("Task is not in PENDING status", exception.getMessage());
@@ -240,7 +251,9 @@ public class TaskServiceTest {
 
     @Test
     void startTask_Success() {
-        StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(100.0).build();
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
         task.setVolunteer(studentUser);
         task.setStatus(Task.TaskStatus.ASSIGNED);
 
@@ -252,7 +265,7 @@ public class TaskServiceTest {
 
         assertNotNull(response);
         assertEquals(Task.TaskStatus.IN_PROGRESS.name(), response.getStatus());
-        assertEquals(100.0, response.getTotalAmountGiven());
+        assertEquals(java.math.BigDecimal.valueOf(100.0), response.getTotalAmountGiven());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
     }
@@ -275,17 +288,34 @@ public class TaskServiceTest {
 
     @Test
     void startTask_ThrowsException_WhenTaskNotAssigned() {
-        StartTaskRequest request = StartTaskRequest.builder().totalAmountGiven(100.0).build();
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
         task.setVolunteer(studentUser);
         task.setStatus(Task.TaskStatus.PENDING); // Not ASSIGNED
 
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.startTask(task.getId(), studentUser.getEmail(), request));
 
         assertEquals("Task is not in ASSIGNED status", exception.getMessage());
+    }
+
+    @Test
+    void startTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.startTask(task.getId(), studentUser.getEmail(), request));
+
+        assertEquals("Task not found", exception.getMessage());
     }
 
     // --- deliverTask Tests ---
@@ -293,7 +323,7 @@ public class TaskServiceTest {
     @Test
     void deliverTask_Success() {
         DeliverTaskRequest request = DeliverTaskRequest.builder()
-                .changeAmount(10.0)
+                .changeAmount(java.math.BigDecimal.valueOf(10.0))
                 .receiptImageUrl("http://example.com/receipt.jpg")
                 .build();
 
@@ -308,7 +338,7 @@ public class TaskServiceTest {
 
         assertNotNull(response);
         assertEquals(Task.TaskStatus.DELIVERED.name(), response.getStatus());
-        assertEquals(10.0, response.getChangeAmount());
+        assertEquals(java.math.BigDecimal.valueOf(10.0), response.getChangeAmount());
         assertEquals("http://example.com/receipt.jpg", response.getReceiptImageUrl());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
@@ -323,10 +353,25 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.deliverTask(task.getId(), studentUser.getEmail(), request));
 
         assertEquals("Task is not IN_PROGRESS", exception.getMessage());
+    }
+
+    @Test
+    void deliverTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        DeliverTaskRequest request = DeliverTaskRequest.builder()
+                .changeAmount(java.math.BigDecimal.valueOf(10.0))
+                .build();
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.deliverTask(task.getId(), studentUser.getEmail(), request));
+
+        assertEquals("Task not found", exception.getMessage());
     }
 
     // --- completeTask Tests ---
@@ -366,10 +411,21 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.completeTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Task must be DELIVERED before it can be completed", exception.getMessage());
+    }
+
+    @Test
+    void completeTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.completeTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
     }
 
     // --- cancelTask Tests ---
@@ -398,7 +454,8 @@ public class TaskServiceTest {
         TaskResponse response = taskService.cancelTask(task.getId(), studentUser.getEmail());
 
         assertNotNull(response);
-        assertEquals(Task.TaskStatus.CANCELLED.name(), response.getStatus());
+        assertEquals(Task.TaskStatus.PENDING.name(), response.getStatus());
+        assertNull(response.getVolunteerId());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
     }
@@ -423,9 +480,20 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
 
-        RuntimeException exception = assertThrows(RuntimeException.class,
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
                 () -> taskService.cancelTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Cannot cancel a completed or delivered task", exception.getMessage());
+    }
+
+    @Test
+    void cancelTask_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.cancelTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
     }
 }

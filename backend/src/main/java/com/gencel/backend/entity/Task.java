@@ -12,6 +12,7 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -47,11 +48,11 @@ public class Task {
 
     private String note;
 
-    @Column(name = "total_amount_given")
-    private Double totalAmountGiven;
+    @Column(name = "total_amount_given", precision = 15, scale = 2)
+    private BigDecimal totalAmountGiven;
 
-    @Column(name = "change_amount")
-    private Double changeAmount;
+    @Column(name = "change_amount", precision = 15, scale = 2)
+    private BigDecimal changeAmount;
 
     @Column(name = "receipt_image_url")
     private String receiptImageUrl;

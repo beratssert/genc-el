@@ -1,6 +1,7 @@
 package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
@@ -206,6 +207,84 @@ class UserServiceTest {
 
             assertThat(result).isEmpty();
             verify(userRepository).findByInstitutionIdAndRoleOrderByCreatedAtDesc(institution.getId(), User.UserRole.STUDENT);
+        }
+    }
+
+    @Nested
+    @DisplayName("Profile operations")
+    class ProfileOperations {
+
+        @Test
+        @DisplayName("getMyProfile mevcut kullanıcıyı döner")
+        void shouldReturnMyProfile() {
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+
+            UserResponse response = userService.getMyProfile(institutionAdmin.getEmail());
+
+            assertThat(response).isNotNull();
+            assertThat(response.getEmail()).isEqualTo(institutionAdmin.getEmail());
+            verify(userRepository).findByEmail(institutionAdmin.getEmail());
+        }
+
+        @Test
+        @DisplayName("getMyProfile kullanıcı bulunamazsa exception fırlatır")
+        void shouldThrowWhenUserNotFoundOnGetProfile() {
+            when(userRepository.findByEmail("unknown@test.com")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.getMyProfile("unknown@test.com"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("User not found");
+        }
+
+        @Test
+        @DisplayName("updateMyProfile alanları günceller")
+        void shouldUpdateMyProfileFields() {
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                    .firstName("YeniAd")
+                    .lastName("YeniSoyad")
+                    .phoneNumber("0500 000 00 00")
+                    .address("Yeni adres")
+                    .build();
+
+            UserResponse response = userService.updateMyProfile(institutionAdmin.getEmail(), request);
+
+            assertThat(response.getFirstName()).isEqualTo("YeniAd");
+            assertThat(response.getLastName()).isEqualTo("YeniSoyad");
+            assertThat(response.getPhoneNumber()).isEqualTo("0500 000 00 00");
+            assertThat(response.getAddress()).isEqualTo("Yeni adres");
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("STUDENT için boş IBAN ile updateMyProfile exception fırlatır")
+        void shouldThrowWhenStudentUpdatesWithBlankIban() {
+            User student = User.builder()
+                    .id(UUID.randomUUID())
+                    .role(User.UserRole.STUDENT)
+                    .email("student@test.com")
+                    .build();
+            when(userRepository.findByEmail(student.getEmail())).thenReturn(Optional.of(student));
+
+            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                    .iban("   ")
+                    .build();
+
+            assertThatThrownBy(() -> userService.updateMyProfile(student.getEmail(), request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("IBAN is required for STUDENT role");
+        }
+
+        @Test
+        @DisplayName("deactivateMyAccount kullanıcıyı soft-delete eder (repository.delete çağrılır)")
+        void shouldDeactivateMyAccount() {
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+
+            userService.deactivateMyAccount(institutionAdmin.getEmail());
+
+            verify(userRepository).delete(institutionAdmin);
         }
     }
 }

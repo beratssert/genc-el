@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -36,10 +37,10 @@ public class TaskResponse {
     private String note;
 
     @Schema(description = "Yaşlı tarafından öğrenciye teslim edilen toplam para miktarı", example = "500.0", nullable = true)
-    private Double totalAmountGiven;
+    private BigDecimal totalAmountGiven;
 
     @Schema(description = "Alışveriş bittikten sonra kalan para üstü", example = "25.50", nullable = true)
-    private Double changeAmount;
+    private BigDecimal changeAmount;
 
     @Schema(description = "Alışveriş fişinin görsel URL'si", example = "https://storage.example.com/receipts/123.jpg", nullable = true)
     private String receiptImageUrl;

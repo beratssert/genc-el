@@ -204,11 +204,11 @@ class InstitutionControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("mevcut olmayan ID ile 400 döner")
-        void shouldReturn400WhenNotFound() throws Exception {
+        @DisplayName("mevcut olmayan ID ile 404 döner")
+        void shouldReturn404WhenNotFound() throws Exception {
             mockMvc.perform(get("/api/v1/institution/{id}", java.util.UUID.randomUUID())
                             .with(user(superAdmin.getEmail()).roles("SYSTEM_ADMIN")))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isNotFound());
         }
     }
 

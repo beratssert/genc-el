@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Tag(
         name = "Admin Management",
-        description = "Süper admin (SYSTEM_ADMIN) girişi ve yönetim uç noktaları."
+        description = "Süper admin (SYSTEM_ADMIN) girişi. Süper admin sadece institution CRUD yapabilir; user yönetimi yapamaz."
 )
 public class AdminController {
 

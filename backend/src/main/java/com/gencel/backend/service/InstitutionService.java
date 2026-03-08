@@ -3,7 +3,9 @@ package com.gencel.backend.service;
 import com.gencel.backend.dto.CreateInstitutionRequest;
 import com.gencel.backend.dto.InstitutionResponse;
 import com.gencel.backend.entity.Institution;
+import com.gencel.backend.entity.User;
 import com.gencel.backend.repository.InstitutionRepository;
+import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 public class InstitutionService {
 
     private final InstitutionRepository institutionRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public InstitutionResponse createInstitution(CreateInstitutionRequest request) {
@@ -29,6 +32,51 @@ public class InstitutionService {
 
         institution = institutionRepository.save(institution);
         return mapToResponse(institution);
+    }
+
+    @Transactional
+    public InstitutionResponse updateInstitution(UUID id, CreateInstitutionRequest request) {
+        Institution institution = institutionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Institution not found with id: " + id));
+
+        institution.setName(request.getName());
+        institution.setRegion(request.getRegion());
+        institution.setContactInfo(request.getContactInfo());
+
+        institution = institutionRepository.save(institution);
+        return mapToResponse(institution);
+    }
+
+    @Transactional
+    public InstitutionResponse updateMyInstitution(String adminEmail, CreateInstitutionRequest request) {
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (admin.getRole() != User.UserRole.INSTITUTION_ADMIN) {
+            throw new IllegalArgumentException("Only INSTITUTION_ADMIN can update its own institution");
+        }
+
+        if (admin.getInstitution() == null || admin.getInstitution().getId() == null) {
+            throw new IllegalArgumentException("Admin user has no institution");
+        }
+
+        UUID institutionId = admin.getInstitution().getId();
+        Institution institution = institutionRepository.findById(institutionId)
+                .orElseThrow(() -> new IllegalArgumentException("Institution not found with id: " + institutionId));
+
+        institution.setName(request.getName());
+        institution.setRegion(request.getRegion());
+        institution.setContactInfo(request.getContactInfo());
+
+        institution = institutionRepository.save(institution);
+        return mapToResponse(institution);
+    }
+
+    @Transactional
+    public void deleteInstitution(UUID id) {
+        Institution institution = institutionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Institution not found with id: " + id));
+        institutionRepository.delete(institution); // @SQLDelete ile soft-delete
     }
 
     public List<InstitutionResponse> getAllInstitutions() {

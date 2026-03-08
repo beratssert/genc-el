@@ -26,7 +26,7 @@ CREATE TABLE institutions (
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
-    role VARCHAR(50) NOT NULL CHECK (role IN ('STUDENT', 'ELDERLY', 'INSTITUTION_ADMIN')),
+    role VARCHAR(50) NOT NULL CHECK (role IN ('STUDENT', 'ELDERLY', 'INSTITUTION_ADMIN', 'SYSTEM_ADMIN')),
     first_name VARCHAR(100),
     last_name VARCHAR(100),
     phone_number VARCHAR(20),
@@ -94,6 +94,11 @@ INSERT INTO users (institution_id, role, first_name, last_name, phone_number, em
 ('11111111-1111-1111-1111-111111111111', 'INSTITUTION_ADMIN', 'Bülent', 'Yönetici', '03129990001', 'admin@ankara.com', crypt('admin123', gen_salt('bf', 10)), 'Vakıf Merkezi Ankara', TRUE),
 ('22222222-2222-2222-2222-222222222222', 'INSTITUTION_ADMIN', 'Sibel', 'Yılmaz', '02129990001', 'admin@istanbul.com', crypt('admin123', gen_salt('bf', 10)), 'Dernek Merkezi İstanbul', TRUE),
 ('33333333-3333-3333-3333-333333333333', 'INSTITUTION_ADMIN', 'Murat', 'Kaya', '02329990001', 'admin@izmir.com', crypt('admin123', gen_salt('bf', 10)), 'Cemiyet Merkezi İzmir', TRUE);
+
+-- SİSTEM SÜPER ADMİNİ
+-- Test şifresi: superadmin123 (BCrypt hash'lenmiş, pgcrypto ile üretilir)
+INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, is_active) VALUES 
+(NULL, 'SYSTEM_ADMIN', 'Sistem', 'Yöneticisi', '0000000000', 'superadmin@gencel.com', crypt('superadmin123', gen_salt('bf', 10)), 'Genç-El Merkez', TRUE);
 
 -- ANKARA: 5 Öğrenci + 5 Yaşlı
 INSERT INTO users (institution_id, role, first_name, last_name, phone_number, email, password_hash, address, latitude, longitude, is_active, iban) VALUES 

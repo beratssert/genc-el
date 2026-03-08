@@ -313,6 +313,31 @@ class InstitutionControllerIntegrationTest {
     }
 
     @Nested
+    @DisplayName("DELETE /api/v1/institution/me (Institution admin self delete)")
+    class DeleteMyInstitution {
+
+        @Test
+        @DisplayName("INSTITUTION_ADMIN kendi kurumunu soft-delete yapabilir")
+        void institutionAdminCanDeleteOwnInstitution() throws Exception {
+            mockMvc.perform(delete("/api/v1/institution/me")
+                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                    .andExpect(status().isNoContent());
+
+            org.assertj.core.api.Assertions.assertThat(
+                    institutionRepository.findById(defaultInstitution.getId())
+            ).isEmpty();
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN /me delete endpoint'ini kullanamaz (403)")
+        void superAdminCannotDeleteViaMeEndpoint() throws Exception {
+            mockMvc.perform(delete("/api/v1/institution/me")
+                            .with(user(superAdmin.getEmail()).roles("SYSTEM_ADMIN")))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Nested
     @DisplayName("PUT & DELETE /api/v1/institution/{id} (Super admin CRUD)")
     class UpdateAndDeleteInstitutionById {
 

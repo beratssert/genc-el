@@ -16,12 +16,16 @@ import org.springframework.context.annotation.Configuration;
                 description = """
                         Genc-El Projesi için REST API dökümantasyonu.
                         
-                        Kullanım önerisi:
-                        1. Süper admin girişi için: `POST /api/v1/admin/login` (SYSTEM_ADMIN)
-                        2. Kurum yöneticisi girişi için: `POST /api/v1/institution/login` (INSTITUTION_ADMIN)
-                        3. Öğrenci / yaşlı kullanıcı girişi için: `POST /api/v1/user/login` (STUDENT, ELDERLY)
-                        4. Dönen JWT token'ı sağ üstteki **Authorize** butonuna tıklayarak `Bearer <token>` formatında girin.
-                        5. Ardından kurum, kullanıcı ve görev yönetimi ile ilgili güvenli endpoint'leri (User Management, Institution Management vb.) Swagger UI üzerinden rahatça test edebilirsiniz.
+                        Rol yetkileri:
+                        - **SYSTEM_ADMIN**: Sadece institution CRUD (POST/GET/PUT/DELETE /api/v1/institution). User yönetimi yapamaz.
+                        - **INSTITUTION_ADMIN**: Kendi kurumunu günceller/siler (PUT/DELETE /api/v1/institution/me); kendi kurumuna bağlı STUDENT/ELDERLY oluşturur ve listeler.
+                        - **STUDENT / ELDERLY**: Kendi profil işlemleri ve görev akışları.
+                        
+                        Kullanım:
+                        1. Süper admin: `POST /api/v1/admin/login`
+                        2. Kurum yöneticisi: `POST /api/v1/institution/login`
+                        3. Öğrenci / yaşlı: `POST /api/v1/user/login`
+                        4. Dönen JWT token'ı **Authorize** ile `Bearer <token>` olarak girin.
                         """,
                 version = "1.0",
                 contact = @Contact(

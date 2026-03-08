@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../screens/auth/institution_login_screen.dart';
+import '../../screens/elderly/elderly_home_screen.dart';
+import '../../screens/student/student_home_screen.dart';
 import '../../widgets/custom_text_field.dart';
 
 /// Kullanıcı tipini (ELDERLY / STUDENT) seçip
@@ -28,23 +31,72 @@ class _LoginFormState extends State<LoginForm> {
   void _handleLogin() {
     if (!_formKey.currentState!.validate()) return;
 
-    // TODO: Gerçek auth servisiyle bağla
-    if (_selectedUserType == 'elderly') {
-      // Navigator.pushReplacementNamed(context, '/elderly/dashboard');
-    } else {
-      // Navigator.pushReplacementNamed(context, '/student/dashboard');
-    }
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${_selectedUserType == 'elderly' ? 'Yaşlı' : 'Öğrenci'} olarak giriş yapılıyor…',
-        ),
-        backgroundColor: const Color(0xFF16A34A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    if (_selectedUserType == 'elderly') {
+      if (email == 'yasli@test.com' && password == '123456') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Yaşlı olarak giriş yapılıyor…'),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const ElderlyHomeScreen()),
+          (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Hatalı e-posta veya şifre! Lütfen tekrar deneyin.',
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } else {
+      if (email == 'ogrenci@test.com' && password == '123456') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Öğrenci olarak giriş yapılıyor…'),
+            backgroundColor: Colors.blue,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentHomeScreen()),
+          (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Hatalı e-posta veya şifre! Lütfen tekrar deneyin.',
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -56,7 +108,11 @@ class _LoginFormState extends State<LoginForm> {
         children: [
           _UserTypeSelector(
             selectedType: _selectedUserType,
-            onChanged: (type) => setState(() => _selectedUserType = type),
+            onChanged: (type) {
+              setState(() {
+                _selectedUserType = type;
+              });
+            },
           ),
           const SizedBox(height: 24),
           CustomTextField(
@@ -117,6 +173,24 @@ class _LoginFormState extends State<LoginForm> {
               ),
             ),
             child: const Text('Giriş Yap'),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const InstitutionLoginScreen(),
+                ),
+              );
+            },
+            child: const Text(
+              'Kurum Girişi için Tıklayın',
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),

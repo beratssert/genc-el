@@ -172,15 +172,15 @@ class _NoTaskState extends StatelessWidget {
             isAvailable
                 ? Icons.hourglass_top_rounded
                 : Icons.pause_circle_outline_rounded,
-            size: 40,
+            size: 48,
             color: const Color(0xFFD1D5DB),
           ),
           const SizedBox(height: 10),
           Text(
             isAvailable ? 'Yeni görev bekleniyor…' : 'Müsaitlik kapalı',
             style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF6B7280),
             ),
           ),
@@ -190,7 +190,7 @@ class _NoTaskState extends StatelessWidget {
                 ? 'Yakındaki bir sipariş sizi bilgilendirecek.'
                 : 'Aktif olmak için yukarıdaki anahtarı açın.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+            style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
           ),
         ],
       ),
@@ -211,7 +211,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: FontWeight.bold,
         color: Color(0xFF1E3A5F),
       ),

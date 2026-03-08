@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:tdp_frontend/core/repositories/mock_user_repository.dart';
 import 'create_user_screen.dart';
 import 'user_list_screen.dart';
 
-class InstitutionDashboardScreen extends StatelessWidget {
+class InstitutionDashboardScreen extends StatefulWidget {
   const InstitutionDashboardScreen({super.key});
 
+  @override
+  State<InstitutionDashboardScreen> createState() =>
+      _InstitutionDashboardScreenState();
+}
+
+class _InstitutionDashboardScreenState
+    extends State<InstitutionDashboardScreen> {
   // Mock stats
   final Map<String, dynamic> stats = const {
     'totalElderly': 45,
@@ -134,7 +142,11 @@ class InstitutionDashboardScreen extends StatelessWidget {
                                           builder: (context) =>
                                               const CreateUserScreen(),
                                         ),
-                                      );
+                                      ).then((_) {
+                                        setState(
+                                          () {},
+                                        ); // Tabloyu güncellemek için
+                                      });
                                     },
                                     isPrimary: true,
                                   ),
@@ -294,11 +306,8 @@ class InstitutionDashboardScreen extends StatelessWidget {
   }
 
   List<Widget> _buildRecentUsers() {
-    final users = [
-      {'name': 'Mehmet Demir', 'type': 'Öğrenci', 'date': '25 Şub 2026'},
-      {'name': 'Fatma Kaya', 'type': 'Yaşlı', 'date': '24 Şub 2026'},
-      {'name': 'Ali Çelik', 'type': 'Öğrenci', 'date': '23 Şub 2026'},
-    ];
+    final MockUserRepository userRepo = MockUserRepository();
+    final users = userRepo.recentUsers.take(3).toList();
 
     List<Widget> userWidgets = [];
     for (int i = 0; i < users.length; i++) {
@@ -334,7 +343,7 @@ class InstitutionDashboardScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user['name']!,
+                      user['name'],
                       style: const TextStyle(
                         fontWeight: FontWeight.w500, // font-medium
                         color: Color(0xFF111827), // text-gray-900

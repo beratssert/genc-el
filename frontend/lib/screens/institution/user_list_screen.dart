@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/repositories/mock_user_repository.dart';
 
 enum UserType { elderly, student }
 
@@ -13,80 +14,11 @@ class _UserListScreenState extends State<UserListScreen> {
   String _searchQuery = '';
   UserType _activeTab = UserType.elderly;
 
-  final List<Map<String, dynamic>> _elderlyUsers = [
-    {
-      'id': 1,
-      'name': 'Ayşe Yılmaz',
-      'phone': '0532 123 45 67',
-      'address': 'Çankaya, Ankara',
-    },
-    {
-      'id': 2,
-      'name': 'Mehmet Demir',
-      'phone': '0533 234 56 78',
-      'address': 'Keçiören, Ankara',
-    },
-    {
-      'id': 3,
-      'name': 'Fatma Kaya',
-      'phone': '0534 345 67 89',
-      'address': 'Mamak, Ankara',
-    },
-    {
-      'id': 4,
-      'name': 'Ali Çelik',
-      'phone': '0535 456 78 90',
-      'address': 'Yenimahalle, Ankara',
-    },
-    {
-      'id': 5,
-      'name': 'Zeynep Arslan',
-      'phone': '0536 567 89 01',
-      'address': 'Etimesgut, Ankara',
-    },
-  ];
-
-  final List<Map<String, dynamic>> _studentUsers = [
-    {
-      'id': 1,
-      'name': 'Ahmet Yılmaz',
-      'phone': '0542 123 45 67',
-      'university': 'Ankara Üniversitesi',
-      'completedOrders': 142,
-    },
-    {
-      'id': 2,
-      'name': 'Berat Öztürk',
-      'phone': '0543 234 56 78',
-      'university': 'Gazi Üniversitesi',
-      'completedOrders': 98,
-    },
-    {
-      'id': 3,
-      'name': 'Elif Şahin',
-      'phone': '0544 345 67 89',
-      'university': 'Hacettepe Üniversitesi',
-      'completedOrders': 156,
-    },
-    {
-      'id': 4,
-      'name': 'Can Aydın',
-      'phone': '0545 456 78 90',
-      'university': 'ODTÜ',
-      'completedOrders': 87,
-    },
-    {
-      'id': 5,
-      'name': 'Selin Koç',
-      'phone': '0546 567 89 01',
-      'university': 'Ankara Üniversitesi',
-      'completedOrders': 124,
-    },
-  ];
+  final MockUserRepository _userRepo = MockUserRepository();
 
   List<Map<String, dynamic>> get _filteredElderlyUsers {
-    if (_searchQuery.isEmpty) return _elderlyUsers;
-    return _elderlyUsers.where((user) {
+    if (_searchQuery.isEmpty) return _userRepo.elderlyUsers;
+    return _userRepo.elderlyUsers.where((user) {
       final name = user['name'].toString().toLowerCase();
       final phone = user['phone'].toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
@@ -95,8 +27,8 @@ class _UserListScreenState extends State<UserListScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredStudentUsers {
-    if (_searchQuery.isEmpty) return _studentUsers;
-    return _studentUsers.where((user) {
+    if (_searchQuery.isEmpty) return _userRepo.studentUsers;
+    return _userRepo.studentUsers.where((user) {
       final name = user['name'].toString().toLowerCase();
       final phone = user['phone'].toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
@@ -360,7 +292,7 @@ class _UserListScreenState extends State<UserListScreen> {
                               ),
                             ),
                           ),
-                          if (user['activeOrders'] > 0)
+                          if ((user['activeOrders'] ?? 0) > 0)
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,

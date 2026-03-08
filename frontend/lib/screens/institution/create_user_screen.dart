@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/repositories/mock_user_repository.dart';
 import '../../widgets/custom_text_field.dart';
 
 enum UserType { elderly, student }
@@ -20,11 +21,36 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  final _userRepo = MockUserRepository();
+
   void _handleSubmit() {
     if (_formKey.currentState?.validate() ?? false) {
+      if (_selectedType == UserType.elderly) {
+        _userRepo.addElderlyUser({
+          'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'address': _addressController.text.trim(),
+          'activeOrders': 0,
+        });
+      } else {
+        _userRepo.addStudentUser({
+          'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'university': _addressController.text.trim().isEmpty
+              ? 'Bilinmeyen Üniversite'
+              : _addressController.text.trim(),
+          'completedOrders': 0,
+        });
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kullanıcı başarıyla oluşturuldu!')),
+        const SnackBar(
+          content: Text('Kullanıcı başarıyla oluşturuldu!'),
+          backgroundColor: Color(0xFF16A34A),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
+
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
           Navigator.pop(context);
@@ -259,13 +285,30 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                                     ),
                                     const SizedBox(height: 16),
                                     CustomTextField(
-                                      label: 'Adres',
-                                      hintText: 'Tam adres giriniz',
-                                      prefixIcon: Icons.location_on_outlined,
+                                      label: _selectedType == UserType.elderly
+                                          ? 'Adres'
+                                          : 'Üniversite',
+                                      hintText:
+                                          _selectedType == UserType.elderly
+                                          ? 'Tam adres giriniz'
+                                          : 'Okuduğu üniversite',
+                                      prefixIcon:
+                                          _selectedType == UserType.elderly
+                                          ? Icons.location_on_outlined
+                                          : Icons.school_outlined,
                                       controller: _addressController,
-                                      minLines: 3,
-                                      maxLines: 5,
-                                      keyboardType: TextInputType.multiline,
+                                      minLines:
+                                          _selectedType == UserType.elderly
+                                          ? 3
+                                          : 1,
+                                      maxLines:
+                                          _selectedType == UserType.elderly
+                                          ? 5
+                                          : 1,
+                                      keyboardType:
+                                          _selectedType == UserType.elderly
+                                          ? TextInputType.multiline
+                                          : TextInputType.text,
                                     ),
                                     const SizedBox(height: 16),
                                     CustomTextField(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tdp_frontend/core/models/task_model.dart';
 import '../../core/data/demo_products.dart';
 import '../../core/models/product_model.dart';
 import '../../widgets/order/category_card.dart';
@@ -30,8 +31,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
     return catProducts.any((p) => (_cart[p.id] ?? 0) > 0);
   }
 
-  void _openProduct(Category category) {
-    Navigator.of(context).push(
+  void _openProduct(Category category) async {
+    final result = await Navigator.of(context).push<TaskModel>(
       MaterialPageRoute(
         builder: (_) => ProductScreen(
           category: category,
@@ -40,10 +41,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
         ),
       ),
     );
+    if (result != null && mounted) {
+      Navigator.of(context).pop(result);
+    }
   }
 
-  void _openSummary() {
-    Navigator.of(context).push(
+  void _openSummary() async {
+    final result = await Navigator.of(context).push<TaskModel>(
       MaterialPageRoute(
         builder: (_) => OrderSummaryScreen(
           cart: _cart,
@@ -51,6 +55,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
         ),
       ),
     );
+    if (result != null && mounted) {
+      Navigator.of(context).pop(result);
+    }
   }
 
   @override

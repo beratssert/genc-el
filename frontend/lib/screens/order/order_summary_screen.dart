@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/data/demo_products.dart';
 import '../../core/models/product_model.dart';
+import '../../core/models/task_model.dart';
 import '../../widgets/order/order_item_row.dart';
 
 /// Sipariş özet ekranı.
@@ -66,9 +67,25 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     );
 
     if (confirmed == true && mounted) {
-      // TODO: API çağrısı: POST /api/v1/tasks
-      // Body: { shopping_list: [...], note: note }
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      final shoppingList = _cartProducts
+          .map(
+            (p) => ShoppingItem(
+              name: p.name,
+              qty: widget.cart[p.id] ?? 1,
+              unit: p.unit,
+            ),
+          )
+          .toList();
+
+      final newTask = TaskModel(
+        id: DateTime.now().millisecondsSinceEpoch % 10000,
+        status: TaskStatus.pending,
+        createdAt: DateTime.now(),
+        elderlyName: 'Mehmet Bey',
+        shoppingList: shoppingList,
+        note: note.isNotEmpty ? note : null,
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('🎉 Siparişiniz oluşturuldu! Öğrenci aranıyor…'),
@@ -80,6 +97,8 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
           ),
         ),
       );
+
+      Navigator.of(context).pop(newTask);
     }
   }
 

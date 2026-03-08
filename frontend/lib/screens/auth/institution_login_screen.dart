@@ -17,12 +17,41 @@ class _InstitutionLoginScreenState extends State<InstitutionLoginScreen> {
 
   void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const InstitutionDashboardScreen(),
-        ),
-      );
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      if (email == 'kurum@test.com' && password == '123456') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Kurum olarak giriş yapılıyor…'),
+            backgroundColor: const Color(0xFF4F46E5), // indigo-600
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const InstitutionDashboardScreen(),
+          ),
+          (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Hatalı e-posta veya şifre! Lütfen tekrar deneyin.',
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
     }
   }
 

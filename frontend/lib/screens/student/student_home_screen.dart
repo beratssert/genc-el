@@ -5,6 +5,7 @@ import '../../widgets/student/availability_card.dart';
 import '../../widgets/student/student_task_card.dart';
 import '../../widgets/student/student_action_buttons.dart';
 import '../../widgets/student/incoming_order_sheet.dart';
+import '../../core/repositories/mock_user_repository.dart';
 import 'student_order_history_screen.dart';
 
 /// Öğrenci kullanıcısının ana ekranı.
@@ -34,7 +35,29 @@ class StudentHomeScreen extends StatefulWidget {
 }
 
 class _StudentHomeScreenState extends State<StudentHomeScreen> {
+  final MockUserRepository _userRepo = MockUserRepository();
   bool _isAvailable = true;
+  TaskModel? _currentActiveTask;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentActiveTask = _userRepo.activeTask ?? widget.activeTask;
+
+    // Listen for incoming orders
+    _userRepo.taskStream.listen((task) {
+      if (mounted) {
+        setState(() {
+          _currentActiveTask = task;
+        });
+
+        // Show incoming order sheet if a pending task arrives and student is available
+        if (task != null && task.status == TaskStatus.pending && _isAvailable) {
+          _showIncomingOrderSheet(task);
+        }
+      }
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Demo: gelen sipariş göster
@@ -98,11 +121,33 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     ),
   ];
 
-  void _showDemoOrder() {
+  void _showIncomingOrderSheet(TaskModel task) {
+    // Demo verisini gerçek task objesinden dönüştürüyoruz
+    final incomingOrder = IncomingOrder(
+      id: task.id,
+      elderlyName: task.elderlyName ?? 'Bilinmeyen Müşteri',
+      distanceKm: 1.2,
+      estimatedMinutes: 20,
+      note: task.note,
+      shoppingList: task.shoppingList,
+    );
+
     showIncomingOrderSheet(
       context,
-      order: _demoOrder,
+      order: incomingOrder,
       onAccepted: () {
+        // Update task status and broadcast
+        final acceptedTask = TaskModel(
+          id: task.id,
+          status: TaskStatus.assigned,
+          shoppingList: task.shoppingList,
+          createdAt: task.createdAt,
+          volunteerName: widget.studentName,
+          elderlyName: task.elderlyName,
+          note: task.note,
+        );
+        _userRepo.updateActiveTask(acceptedTask);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('✅ Sipariş kabul edildi! Göreve git.'),
@@ -173,14 +218,27 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     child: Column(
                       children: [
                         StudentTaskCard(
-                          activeTask: widget.activeTask,
+                          activeTask: _currentActiveTask,
                           isAvailable: _isAvailable,
                         ),
 
-                        // Demo tetikleyici — gerçek backend bağlandığında kaldırılır
+                        // Gerçek task test butonu
                         if (!hasActiveTask && _isAvailable) ...[
                           const SizedBox(height: 24),
-                          _DemoTriggerButton(onTap: _showDemoOrder),
+                          _DemoTriggerButton(
+                            onTap: () {
+                              _showIncomingOrderSheet(
+                                TaskModel(
+                                  id: _demoOrder.id,
+                                  status: TaskStatus.pending,
+                                  createdAt: DateTime.now(),
+                                  elderlyName: _demoOrder.elderlyName,
+                                  shoppingList: _demoOrder.shoppingList,
+                                  note: _demoOrder.note,
+                                ),
+                              );
+                            },
+                          ),
                         ],
                       ],
                     ),

@@ -38,8 +38,8 @@ class AvailabilityCard extends StatelessWidget {
         children: [
           // İkon
           Container(
-            width: 44,
-            height: 44,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: currentColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
@@ -49,7 +49,7 @@ class AvailabilityCard extends StatelessWidget {
                   ? Icons.wifi_tethering_rounded
                   : Icons.wifi_tethering_off_rounded,
               color: currentColor,
-              size: 24,
+              size: 32,
             ),
           ),
           const SizedBox(width: 14),
@@ -62,7 +62,7 @@ class AvailabilityCard extends StatelessWidget {
                 Text(
                   isAvailable ? 'Görev Almaya Hazırım' : 'Şu An Müsait Değilim',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: currentColor,
                   ),

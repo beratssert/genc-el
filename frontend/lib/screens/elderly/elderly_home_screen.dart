@@ -5,6 +5,7 @@ import '../../screens/order/category_screen.dart';
 import '../../widgets/elderly/greeting_header.dart';
 import '../../widgets/elderly/active_order_card.dart';
 import '../../widgets/elderly/home_action_buttons.dart';
+import '../../core/repositories/mock_user_repository.dart';
 
 /// Yaşlı/Engelli kullanıcısının ana sayfası.
 ///
@@ -12,7 +13,7 @@ import '../../widgets/elderly/home_action_buttons.dart';
 ///   1. Karşılama başlığı
 ///   2. Aktif sipariş kartı (varsa detay, yoksa boş durum)
 ///   3. Yeni Alışveriş Oluştur + Geçmiş Siparişler butonları
-class ElderlyHomeScreen extends StatelessWidget {
+class ElderlyHomeScreen extends StatefulWidget {
   const ElderlyHomeScreen({
     super.key,
     this.userName = 'Mehmet Bey',
@@ -27,6 +28,29 @@ class ElderlyHomeScreen extends StatelessWidget {
 
   /// Tamamlanmış / iptal geçmiş siparişler.
   final List<TaskModel> completedTasks;
+
+  @override
+  State<ElderlyHomeScreen> createState() => _ElderlyHomeScreenState();
+}
+
+class _ElderlyHomeScreenState extends State<ElderlyHomeScreen> {
+  final MockUserRepository _userRepo = MockUserRepository();
+  TaskModel? _currentActiveTask;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentActiveTask = _userRepo.activeTask ?? widget.activeTask;
+
+    // Listen for updates from students (like task acceptance)
+    _userRepo.taskStream.listen((task) {
+      if (mounted) {
+        setState(() {
+          _currentActiveTask = task;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,30 +74,38 @@ class ElderlyHomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // --- 1. Karşılama ---
-                GreetingHeader(userName: userName),
+                GreetingHeader(userName: widget.userName),
                 const SizedBox(height: 28),
 
                 // --- 2. Aktif Sipariş ---
                 Expanded(
                   child: SingleChildScrollView(
-                    child: ActiveOrderCard(activeTask: activeTask),
+                    child: ActiveOrderCard(activeTask: _currentActiveTask),
                   ),
                 ),
                 const SizedBox(height: 20),
 
                 // --- 3. Aksiyon Butonları ---
                 HomeActionButtons(
-                  isOrderActive: activeTask != null,
-                  onCreateOrder: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const CategoryScreen()),
-                    );
+                  isOrderActive: _currentActiveTask != null,
+                  onCreateOrder: () async {
+                    final createdTask = await Navigator.of(context)
+                        .push<TaskModel>(
+                          MaterialPageRoute(
+                            builder: (_) => const CategoryScreen(),
+                          ),
+                        );
+
+                    if (createdTask != null) {
+                      _userRepo.updateActiveTask(createdTask);
+                    }
                   },
                   onViewHistory: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            OrderHistoryScreen(completedTasks: completedTasks),
+                        builder: (_) => OrderHistoryScreen(
+                          completedTasks: widget.completedTasks,
+                        ),
                       ),
                     );
                   },

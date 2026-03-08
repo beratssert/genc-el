@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tdp_frontend/core/models/task_model.dart';
 import '../../core/data/demo_products.dart';
 import '../../core/models/product_model.dart';
 import '../../widgets/order/product_card.dart';
@@ -53,8 +54,8 @@ class _ProductScreenState extends State<ProductScreen> {
     widget.onCartChanged();
   }
 
-  void _openSummary() {
-    Navigator.of(context).push(
+  void _openSummary() async {
+    final result = await Navigator.of(context).push<TaskModel>(
       MaterialPageRoute(
         builder: (_) => OrderSummaryScreen(
           cart: widget.cart,
@@ -65,6 +66,9 @@ class _ProductScreenState extends State<ProductScreen> {
         ),
       ),
     );
+    if (result != null && mounted) {
+      Navigator.of(context).pop(result);
+    }
   }
 
   @override

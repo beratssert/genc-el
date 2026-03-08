@@ -56,6 +56,7 @@ class CustomTextField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          autocorrect: false,
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,

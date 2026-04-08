@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/models/user.dart';
-import 'package:tdp_frontend/screens/auth/institution_login.dart';
-import 'package:tdp_frontend/screens/beneficiary/beneficiary_main_screen.dart';
-import 'package:tdp_frontend/screens/institution/admin_screen.dart';
-import 'package:tdp_frontend/screens/student/student_screen.dart';
+import 'package:tdp_frontend/screens/auth/login_screen.dart';
+import 'package:tdp_frontend/screens/elderly/elderly_home_screen.dart';
+import 'package:tdp_frontend/screens/institution/institution_dashboard_screen.dart';
+import 'package:tdp_frontend/screens/student/student_home_screen.dart';
 import 'package:tdp_frontend/services/storage_service.dart';
 import 'package:tdp_frontend/shared/theme.dart';
 
@@ -32,23 +32,24 @@ class MyApp extends ConsumerWidget {
     final authInitAsync = ref.watch(authInitProvider);
 
     return MaterialApp(
+      title: 'Genç El',
       debugShowCheckedModeBanner: false,
       theme: appTheme,
       home: authInitAsync.when(
         data: (roleString) {
           if (roleString == Role.INSTITUTION_ADMIN.name) {
-            return const AdminScreen();
+            return const InstitutionDashboardScreen();
           } else if (roleString == Role.STUDENT.name) {
-            return const StudentScreen();
+            return const StudentHomeScreen();
           } else if (roleString == Role.ELDERLY.name) {
-            return const BeneficiaryMainScreen();
+            return const ElderlyHomeScreen();
           } else {
-            return const InstituionLogin();
+            return LoginScreen(selectedType: 'elderly');
           }
         },
         loading: () =>
             const Scaffold(body: Center(child: CircularProgressIndicator())),
-        error: (err, stack) => const InstituionLogin(),
+        error: (err, stack) => LoginScreen(selectedType: 'elderly'),
       ),
     );
   }

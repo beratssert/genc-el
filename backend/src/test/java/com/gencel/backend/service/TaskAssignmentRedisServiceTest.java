@@ -94,11 +94,13 @@ class TaskAssignmentRedisServiceTest {
 
     @Test
     void prepareAssignment_savesCandidateQueueAndPendingKey() {
-        when(userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(volunteer.getInstitution().getId(),
-                User.UserRole.STUDENT))
-                .thenReturn(List.of(volunteer, candidate));
-        when(taskRepository.countByVolunteerIdAndStatus(candidate.getId(), Task.TaskStatus.ASSIGNED)).thenReturn(0L);
-        when(taskRepository.countByVolunteerIdAndStatus(candidate.getId(), Task.TaskStatus.IN_PROGRESS)).thenReturn(0L);
+        when(userRepository.findNearbyAvailableStudents(
+                eq(volunteer.getInstitution().getId()),
+                eq(volunteer.getId()),
+                eq(requester.getLatitude()),
+                eq(requester.getLongitude()),
+                eq(1.0)))
+                .thenReturn(List.of(candidate));
 
         taskAssignmentRedisService.prepareAssignment(task, volunteer);
 
@@ -122,31 +124,13 @@ class TaskAssignmentRedisServiceTest {
                 .longitude(32.85425)
                 .build();
 
-        User outsideRadius = User.builder()
-                .id(UUID.randomUUID())
-                .role(User.UserRole.STUDENT)
-                .latitude(39.9500)
-                .longitude(32.9000)
-                .build();
-
-        when(userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(
-                volunteer.getInstitution().getId(),
-                User.UserRole.STUDENT))
-                .thenReturn(List.of(volunteer, highCompletedNear, lowCompletedNear, outsideRadius));
-
-        when(taskRepository.countByVolunteerIdAndStatus(highCompletedNear.getId(), Task.TaskStatus.ASSIGNED))
-                .thenReturn(0L);
-        when(taskRepository.countByVolunteerIdAndStatus(highCompletedNear.getId(), Task.TaskStatus.IN_PROGRESS))
-                .thenReturn(0L);
-        when(taskRepository.countByVolunteerIdAndStatus(lowCompletedNear.getId(), Task.TaskStatus.ASSIGNED))
-                .thenReturn(0L);
-        when(taskRepository.countByVolunteerIdAndStatus(lowCompletedNear.getId(), Task.TaskStatus.IN_PROGRESS))
-                .thenReturn(0L);
-        when(taskRepository.countByVolunteerIdAndStatus(outsideRadius.getId(), Task.TaskStatus.ASSIGNED))
-                .thenReturn(0L);
-        when(taskRepository.countByVolunteerIdAndStatus(outsideRadius.getId(), Task.TaskStatus.IN_PROGRESS))
-                .thenReturn(0L);
-
+        when(userRepository.findNearbyAvailableStudents(
+                eq(volunteer.getInstitution().getId()),
+                eq(volunteer.getId()),
+                eq(requester.getLatitude()),
+                eq(requester.getLongitude()),
+                eq(1.0)))
+                .thenReturn(List.of(highCompletedNear, lowCompletedNear));
         when(taskRepository.countByVolunteerIdAndStatusAndUpdatedAtBetween(
                 eq(highCompletedNear.getId()),
                 eq(Task.TaskStatus.COMPLETED),

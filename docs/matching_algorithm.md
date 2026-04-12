@@ -4,6 +4,7 @@ Bu doküman, "Yaşlı bir birey talep oluşturduğunda, sırayla en uygun öğre
 
 ## Kullanılan Teknolojiler
 - **PostgreSQL (PostGIS):** Yakındaki öğrencileri bulmak için.
+- **PostgreSQL:** Yakındaki öğrencileri veritabanı tarafında filtrelemek için; mevcut sorgu PostGIS'e taşınmaya uygun.
 - **Redis List:** Aday öğrencileri sıraya dizmek için.
 - **Redis Key-Value (TTL):** Cevap süresini (10dk) yönetmek için.
 - **Spring Boot Event Listener:** Redis'ten gelen "Süre Doldu" (Expiration) olaylarını dinlemek için.
@@ -13,6 +14,7 @@ Bu doküman, "Yaşlı bir birey talep oluşturduğunda, sırayla en uygun öğre
 ### 1. Talep Oluşturma (Trigger)
 Ayşe Teyze "Öğrenci Çağır" butonuna bastığında:
 1.  Sistem `users` tablosundan **1 km yarıçapındaki** (parametre değiştirilebilir), `is_active=true` olan ve şu an başka görevi olmayan öğrencileri sorgular.
+    - Bu filtre artık veritabanı tarafında çalışır; Redis'e yalnızca aday kuyruğu yazılır.
 2.  Bulunan öğrencileri öncelik sırasına göre dizer:
     - **1. Kriter:** O ay tamamladığı görev sayısı **AZ** olan en üstte (Adil dağılım için).
     - **2. Kriter:** Görev sayıları eşitse, konumu **YAKIN** olan en üstte.

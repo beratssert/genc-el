@@ -96,7 +96,7 @@ public class UserController {
     @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
     @Operation(
             summary = "Kurum kullanıcısı oluştur",
-            description = "Sadece INSTITUTION_ADMIN rolüne sahip kurum yöneticilerinin, kendi kurumuna bağlı STUDENT veya ELDERLY kullanıcı oluşturmasını sağlar."
+            description = "Sadece INSTITUTION_ADMIN rolüne sahip kurum yöneticisinin, kendi kurumuna bağlı STUDENT veya ELDERLY kullanıcı oluşturmasını sağlar."
     )
     public ResponseEntity<UserResponse> createUser(
             Authentication authentication,

@@ -4,6 +4,8 @@ import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.exception.UnauthorizedActionException;
+import com.gencel.backend.exception.UserNotFoundException;
 import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,13 +32,15 @@ public class UserService {
 
         // Fetch current user (institution admin) and validate role
         User currentUser = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (currentUser.getRole() != User.UserRole.INSTITUTION_ADMIN) {
-            throw new IllegalArgumentException("Only INSTITUTION_ADMIN can create users");
+            throw new UnauthorizedActionException("Only INSTITUTION_ADMIN can create users");
         }
 
-        if (currentUser.getInstitution() == null || currentUser.getInstitution().getId() == null) {
+        var targetInstitution = currentUser.getInstitution();
+
+        if (targetInstitution == null || targetInstitution.getId() == null) {
             throw new IllegalArgumentException("Admin user has no institution");
         }
 
@@ -52,7 +56,7 @@ public class UserService {
 
         // Create user entity
         User user = User.builder()
-                .institution(currentUser.getInstitution())
+                .institution(targetInstitution)
                 .role(request.getRole())
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -73,14 +77,14 @@ public class UserService {
 
     /**
      * Lists users belonging to the same institution as the current admin.
-     * Only INSTITUTION_ADMIN can call this; they see only their institution's users.
+     * INSTITUTION_ADMIN sees only its own institution users.
      */
     public List<UserResponse> listUsersByInstitution(String currentUserEmail, User.UserRole roleFilter) {
         User currentUser = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (currentUser.getRole() != User.UserRole.INSTITUTION_ADMIN) {
-            throw new IllegalArgumentException("Only INSTITUTION_ADMIN can list users");
+            throw new UnauthorizedActionException("Only INSTITUTION_ADMIN can list users");
         }
 
         if (currentUser.getInstitution() == null || currentUser.getInstitution().getId() == null) {
@@ -92,8 +96,9 @@ public class UserService {
                 ? userRepository.findByInstitutionIdOrderByCreatedAtDesc(institutionId)
                 : userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(institutionId, roleFilter);
 
+        // Institution admin sees only non-admin users of its own institution
         return users.stream()
-                .filter(user -> user.getRole() != User.UserRole.INSTITUTION_ADMIN) // Adminleri (kendini) listeden çıkart
+                .filter(user -> user.getRole() != User.UserRole.INSTITUTION_ADMIN)
                 .map(this::mapToUserResponse)
                 .collect(Collectors.toList());
     }
@@ -101,14 +106,14 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse getMyProfile(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         return mapToUserResponse(user);
     }
 
     @Transactional
     public UserResponse updateMyProfile(String email, UpdateUserProfileRequest request) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (request.getFirstName() != null) {
             user.setFirstName(request.getFirstName());
@@ -140,7 +145,7 @@ public class UserService {
     @Transactional
     public void deactivateMyAccount(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         // Soft-delete: @SQLDelete ile is_active=false olarak işaretlenecek
         userRepository.delete(user);
     }

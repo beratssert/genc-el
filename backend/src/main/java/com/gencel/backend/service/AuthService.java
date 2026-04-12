@@ -26,6 +26,10 @@ public class AuthService {
         return loginWithRoles(request, java.util.List.of(User.UserRole.INSTITUTION_ADMIN));
     }
 
+    public LoginResponse superAdminLogin(LoginRequest request) {
+        return loginWithRoles(request, java.util.List.of(User.UserRole.SYSTEM_ADMIN));
+    }
+
     private LoginResponse loginWithRoles(LoginRequest request, java.util.List<User.UserRole> allowedRoles) {
         // Fetch user from database (single query), bypassing @SQLRestriction to check disabled users
         User user = userRepository.findByEmailIncludingDisabled(request.getEmail())

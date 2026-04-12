@@ -192,6 +192,46 @@ class UserControllerIntegrationTest {
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest());
                 }
+
+                @Test
+                @DisplayName("son eklenen kullanıcı listede en üstte gelir")
+                void shouldReturnNewestUserFirstInList() throws Exception {
+                        CreateUserRequest firstUser = CreateUserRequest.builder()
+                                        .role(User.UserRole.STUDENT)
+                                        .firstName("Ilk")
+                                        .lastName("Kullanici")
+                                        .email("ilk.kullanici@test.com")
+                                        .phoneNumber("0533 111 11 11")
+                                        .password("IlkUser123!")
+                                        .iban("TR11 1111 1111 1111 1111 1111 11")
+                                        .build();
+
+                        CreateUserRequest secondUser = CreateUserRequest.builder()
+                                        .role(User.UserRole.ELDERLY)
+                                        .firstName("Son")
+                                        .lastName("Kullanici")
+                                        .email("son.kullanici@test.com")
+                                        .phoneNumber("0533 222 22 22")
+                                        .password("SonUser123!")
+                                        .build();
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(firstUser)))
+                                        .andExpect(status().isCreated());
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(secondUser)))
+                                        .andExpect(status().isCreated());
+
+                        mockMvc.perform(get("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$[0].email").value("son.kullanici@test.com"));
+                }
         }
 
         @Nested

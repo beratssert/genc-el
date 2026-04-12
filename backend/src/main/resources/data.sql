@@ -140,6 +140,12 @@ INSERT INTO users (institution_id, role, first_name, last_name, phone_number, em
 ('33333333-3333-3333-3333-333333333333', 'ELDERLY', 'Nebahat', 'Nene', '532024', 'nebahat@izmir.com', 'hash', 'Urla', 38.3200, 26.7600, TRUE, NULL),
 ('33333333-3333-3333-3333-333333333333', 'ELDERLY', 'Remzi', 'Bey', '532025', 'remzi@izmir.com', 'hash', 'Çeşme', 38.3200, 26.3000, TRUE, NULL);
 
+-- Seed login parity: student/elderly hesaplar da bcrypt hash ile giriş yapabilsin.
+-- Ortak test şifresi: user123
+UPDATE users
+SET password_hash = crypt('user123', gen_salt('bf', 10))
+WHERE role IN ('STUDENT', 'ELDERLY');
+
 -- #############################################################
 -- 4. BURS, GÖREV VE LOGLAR
 -- #############################################################

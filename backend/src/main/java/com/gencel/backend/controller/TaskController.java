@@ -74,6 +74,15 @@ public class TaskController {
                 return ResponseEntity.ok(taskService.rejectTask(taskId, authentication.getName()));
         }
 
+        @Operation(summary = "Alışveriş Başlangıcını Onayla", description = "Yaşlı kullanıcının, öğrenci alışverişe başlamadan önce verilen para miktarını onaylamasını sağlar.")
+        @PutMapping("/{taskId}/confirm-start")
+        public ResponseEntity<TaskResponse> confirmStartTask(
+                        @Parameter(description = "Onaylanacak görevin ID'si", required = true) @PathVariable UUID taskId,
+                        @RequestBody @jakarta.validation.Valid StartTaskRequest request,
+                        @Parameter(hidden = true) Authentication authentication) {
+                return ResponseEntity.ok(taskService.confirmStartTask(taskId, authentication.getName(), request));
+        }
+
         @Operation(summary = "Alışverişe Başla", description = "Öğrencinin yaşlıdan parayı alıp alışverişe başladığını bildirir. Görev durumu 'IN_PROGRESS' olur.")
         @PutMapping("/{taskId}/start")
         public ResponseEntity<TaskResponse> startTask(
@@ -81,6 +90,14 @@ public class TaskController {
                         @RequestBody @jakarta.validation.Valid StartTaskRequest request,
                         @Parameter(hidden = true) Authentication authentication) {
                 return ResponseEntity.ok(taskService.startTask(taskId, authentication.getName(), request));
+        }
+
+        @Operation(summary = "Teslimatı Onayla", description = "Yaşlı kullanıcının teslim edilen ürünleri, para üstünü ve fişi onaylamasını sağlar.")
+        @PutMapping("/{taskId}/confirm-end")
+        public ResponseEntity<TaskResponse> confirmDeliveryTask(
+                        @Parameter(description = "Onaylanacak görevin ID'si", required = true) @PathVariable UUID taskId,
+                        @Parameter(hidden = true) Authentication authentication) {
+                return ResponseEntity.ok(taskService.confirmDeliveryTask(taskId, authentication.getName()));
         }
 
         @Operation(summary = "Alışverişi Teslim Et", description = "Öğrencinin alışverişi tamamlayıp ürünleri ve para üstünü yaşlıya teslim etmesini bildirir. Görev durumu 'DELIVERED' olur.")

@@ -215,6 +215,31 @@ public class TaskIntegrationTest {
                                 .andExpect(jsonPath("$.error").exists());
         }
 
+        // --- CONFIRM START ---
+
+        @Test
+        @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
+        void confirmStartTask_Success() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                StartTaskRequest request = StartTaskRequest.builder()
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(200.0))
+                                .build();
+                TaskResponse response = TaskResponse.builder().id(taskId).status("ASSIGNED")
+                                .startConfirmed(true)
+                                .totalAmountGiven(java.math.BigDecimal.valueOf(200.0))
+                                .build();
+
+                when(taskService.confirmStartTask(taskId, "elderly@test.com", request)).thenReturn(response);
+
+                mockMvc.perform(put("/api/v1/tasks/{taskId}/confirm-start", taskId)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("ASSIGNED"))
+                                .andExpect(jsonPath("$.startConfirmed").value(true))
+                                .andExpect(jsonPath("$.totalAmountGiven").value(200.0));
+        }
+
         // --- START TASK ---
 
         @Test
@@ -270,6 +295,25 @@ public class TaskIntegrationTest {
                                 .content(objectMapper.writeValueAsString(request)))
                                 .andExpect(status().isForbidden())
                                 .andExpect(jsonPath("$.error").exists());
+        }
+
+        // --- CONFIRM DELIVERY ---
+
+        @Test
+        @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
+        void confirmDeliveryTask_Success() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                TaskResponse response = TaskResponse.builder().id(taskId).status("DELIVERED")
+                                .deliveryConfirmed(true)
+                                .build();
+
+                when(taskService.confirmDeliveryTask(taskId, "elderly@test.com")).thenReturn(response);
+
+                mockMvc.perform(put("/api/v1/tasks/{taskId}/confirm-end", taskId)
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("DELIVERED"))
+                                .andExpect(jsonPath("$.deliveryConfirmed").value(true));
         }
 
         // --- DELIVER TASK ---

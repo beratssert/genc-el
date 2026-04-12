@@ -1,6 +1,7 @@
 package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.Institution;
@@ -260,6 +261,22 @@ class UserServiceTest {
             assertThat(response.getLastName()).isEqualTo("YeniSoyad");
             assertThat(response.getPhoneNumber()).isEqualTo("0500 000 00 00");
             assertThat(response.getAddress()).isEqualTo("Yeni adres");
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("updateMyFcmToken token kaydeder")
+        void shouldUpdateMyFcmToken() {
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateFcmTokenRequest request = UpdateFcmTokenRequest.builder()
+                    .fcmToken("  token-123  ")
+                    .build();
+
+            UserResponse response = userService.updateMyFcmToken(institutionAdmin.getEmail(), request);
+
+            assertThat(response.getFcmToken()).isEqualTo("token-123");
             verify(userRepository).save(any(User.class));
         }
 

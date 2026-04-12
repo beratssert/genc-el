@@ -42,7 +42,16 @@ mvn clean verify
 
 ```bash
 docker build -t genc-el-backend ./backend
+
+# Tüm sistemi Docker Compose ile smoke test et
+./scripts/docker-smoke-test.sh
 ```
+
+### Docker Compose Smoke Test
+- Backend + PostgreSQL + Redis birlikte ayağa kalkar.
+- `POST /api/v1/admin/login` endpoint'i ile canlı akış doğrulanır.
+- Login cevabında `token` döndüğü doğrulanır.
+- Test sonunda container'lar otomatik kapatılır (`docker compose down -v`).
 
 ## Yeni Test Eklerken
 

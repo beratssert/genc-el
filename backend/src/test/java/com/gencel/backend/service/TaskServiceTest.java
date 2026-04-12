@@ -18,10 +18,8 @@ import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -57,7 +55,6 @@ public class TaskServiceTest {
     @Mock
     private TaskRealtimePublisher taskRealtimePublisher;
 
-    @InjectMocks
     private TaskService taskService;
 
     private User elderlyUser;
@@ -66,9 +63,14 @@ public class TaskServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(taskService, "taskAssignmentRedisService", taskAssignmentRedisService);
-        ReflectionTestUtils.setField(taskService, "notificationService", notificationService);
-        ReflectionTestUtils.setField(taskService, "fileStorageService", fileStorageService);
+        taskService = new TaskService(
+                taskRepository,
+                taskLogRepository,
+                userRepository,
+                fileStorageService,
+                taskRealtimePublisher,
+                Optional.of(taskAssignmentRedisService),
+                notificationService);
 
         elderlyUser = User.builder()
                 .id(UUID.randomUUID())

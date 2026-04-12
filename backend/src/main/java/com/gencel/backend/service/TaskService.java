@@ -16,7 +16,6 @@ import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,12 +34,8 @@ public class TaskService {
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final TaskRealtimePublisher taskRealtimePublisher;
-
-    @Autowired(required = false)
-    private TaskAssignmentRedisService taskAssignmentRedisService;
-
-    @Autowired
-    private NotificationService notificationService;
+    private final Optional<TaskAssignmentRedisService> taskAssignmentRedisService;
+    private final NotificationService notificationService;
 
     @Transactional
     public TaskResponse createTask(CreateTaskRequest request, String email) {
@@ -159,9 +154,8 @@ public class TaskService {
                 .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         logAction(task, volunteer, TaskLog.TaskLogAction.ASSIGNED, "Task assigned to student volunteer.");
-        if (taskAssignmentRedisService != null) {
-            taskAssignmentRedisService.prepareAssignment(task, volunteer);
-        }
+        Task assignedTask = task;
+        taskAssignmentRedisService.ifPresent(service -> service.prepareAssignment(assignedTask, volunteer));
         notificationService.notifyTaskAssigned(volunteer, task,
                 "Yeni görev atandı",
                 "Yakınında yeni bir görev var. Kabul edilen görevi görüntüleyebilirsin.");
@@ -206,24 +200,22 @@ public class TaskService {
     }
 
     private TaskResponse releaseAndReassign(Task task, User releasedVolunteer, String releaseDetails) {
-        if (taskAssignmentRedisService != null) {
-            taskAssignmentRedisService.clearPendingAssignment(task.getId());
-        }
+        UUID taskId = task.getId();
+        taskAssignmentRedisService.ifPresent(service -> service.clearPendingAssignment(taskId));
 
         logAction(task, releasedVolunteer, TaskLog.TaskLogAction.REJECTED, releaseDetails);
 
-        var nextVolunteerOpt = taskAssignmentRedisService != null
-                ? taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())
-                : java.util.Optional.<User>empty();
+        var nextVolunteerOpt = taskAssignmentRedisService
+                .flatMap(service -> service.pollNextAvailableCandidate(taskId));
         if (nextVolunteerOpt.isPresent()) {
             User nextVolunteer = nextVolunteerOpt.get();
             task.setVolunteer(nextVolunteer);
             task.setStatus(Task.TaskStatus.ASSIGNED);
             task = taskRepository.save(task);
 
-            if (taskAssignmentRedisService != null) {
-                taskAssignmentRedisService.updatePendingAssignment(task.getId(), nextVolunteer.getId());
-            }
+            UUID nextVolunteerId = nextVolunteer.getId();
+            taskAssignmentRedisService
+                    .ifPresent(service -> service.updatePendingAssignment(taskId, nextVolunteerId));
             logAction(task, nextVolunteer, TaskLog.TaskLogAction.ASSIGNED,
                     "Task reassigned to next available student.");
             notificationService.notifyTaskAssigned(nextVolunteer, task,
@@ -238,9 +230,7 @@ public class TaskService {
         task.setStatus(Task.TaskStatus.CANCELLED);
         task = taskRepository.save(task);
 
-        if (taskAssignmentRedisService != null) {
-            taskAssignmentRedisService.clearCandidateQueue(task.getId());
-        }
+        taskAssignmentRedisService.ifPresent(service -> service.clearCandidateQueue(taskId));
         logAction(task, null, TaskLog.TaskLogAction.CANCELLED,
                 "No available students remaining after rejection or timeout.");
         notificationService.notifyTaskCancelled(task.getRequester(), task,
@@ -297,9 +287,7 @@ public class TaskService {
             task.setTotalAmountGiven(request.getTotalAmountGiven());
         }
 
-        if (taskAssignmentRedisService != null) {
-            taskAssignmentRedisService.clearPendingAssignment(taskId);
-        }
+        taskAssignmentRedisService.ifPresent(service -> service.clearPendingAssignment(taskId));
         task.setStatus(Task.TaskStatus.IN_PROGRESS);
         task = taskRepository.save(task);
 
@@ -320,9 +308,7 @@ public class TaskService {
             throw new InvalidTaskStateException("Task is not IN_PROGRESS");
         }
 
-        if (taskAssignmentRedisService != null) {
-            taskAssignmentRedisService.clearPendingAssignment(taskId);
-        }
+        taskAssignmentRedisService.ifPresent(service -> service.clearPendingAssignment(taskId));
         task.setStatus(Task.TaskStatus.DELIVERED);
         task.setDeliveryConfirmed(false);
         task.setChangeAmount(request.getChangeAmount());
@@ -392,10 +378,10 @@ public class TaskService {
             throw new InvalidTaskStateException("Task must be confirmed by the requester before completion");
         }
 
-        if (taskAssignmentRedisService != null) {
-            taskAssignmentRedisService.clearPendingAssignment(taskId);
-            taskAssignmentRedisService.clearCandidateQueue(taskId);
-        }
+        taskAssignmentRedisService.ifPresent(service -> {
+            service.clearPendingAssignment(taskId);
+            service.clearCandidateQueue(taskId);
+        });
         task.setStatus(Task.TaskStatus.COMPLETED);
         task = taskRepository.save(task);
 
@@ -428,10 +414,10 @@ public class TaskService {
             throw new InvalidTaskStateException("Cannot cancel a completed or delivered task");
         }
 
-        if (taskAssignmentRedisService != null) {
-            taskAssignmentRedisService.clearPendingAssignment(taskId);
-            taskAssignmentRedisService.clearCandidateQueue(taskId);
-        }
+        taskAssignmentRedisService.ifPresent(service -> {
+            service.clearPendingAssignment(taskId);
+            service.clearCandidateQueue(taskId);
+        });
 
         if (isVolunteer) {
             // Volunteer leaves the task: return to pool

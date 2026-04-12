@@ -90,7 +90,7 @@ public class TaskController {
                 return ResponseEntity.ok(taskService.assignTask(taskId, authentication.getName()));
         }
 
-        @Operation(summary = "Görevi Reddet", description = "Görevi üstlenen öğrencinin görevi reddetmesini sağlar. Görev tekrar 'PENDING' durumuna döner ve başka öğrenciye yeniden atanabilir.")
+        @Operation(summary = "Görevi Reddet", description = "Görevi üstlenen öğrencinin görevi reddetmesini sağlar. Sistem görev aday kuyruğundan bir sonraki öğrenciyi atar (ASSIGNED) veya aday kalmadıysa görevi iptal eder (CANCELLED).")
         @PutMapping("/{taskId}/reject")
         public ResponseEntity<TaskResponse> rejectTask(
                         @Parameter(description = "Reddedilecek görevin ID'si", required = true) @PathVariable UUID taskId,

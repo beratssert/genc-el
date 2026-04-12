@@ -3,6 +3,7 @@ package com.gencel.backend.service;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class NotificationService {
 
   private static final URI FCM_LEGACY_ENDPOINT = URI.create("https://fcm.googleapis.com/fcm/send");
@@ -57,14 +59,14 @@ public class NotificationService {
 
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() >= 400) {
-        throw new IllegalStateException(
-            "FCM request failed with status " + response.statusCode() + ": " + response.body());
+        log.warn("FCM request failed for task {} with status {}: {}",
+            task.getId(), response.statusCode(), response.body());
       }
     } catch (IOException exception) {
-      throw new IllegalStateException("Failed to send FCM notification for task " + task.getId(), exception);
+      log.warn("Failed to send FCM notification for task {}", task.getId(), exception);
     } catch (InterruptedException exception) {
       Thread.currentThread().interrupt();
-      throw new IllegalStateException("Failed to send FCM notification for task " + task.getId(), exception);
+      log.warn("Interrupted while sending FCM notification for task {}", task.getId(), exception);
     }
   }
 }

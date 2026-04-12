@@ -122,8 +122,8 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
-    @Operation(summary = "Kurum kullanıcılarını listele", description = "Sadece INSTITUTION_ADMIN tarafından çağrılabilir. Kurum yöneticisinin kendi kurumuna bağlı kullanıcıları listeler; isteğe bağlı rol filtresi ile (STUDENT, ELDERLY) filtreleme yapılabilir.")
-    public ResponseEntity<?> listUsers(
+    @Operation(summary = "Kurum kullanıcılarını listele", description = "Sadece INSTITUTION_ADMIN tarafından çağrılabilir. Her zaman sayfalı (paged) yanıt döner.")
+    public ResponseEntity<UserPageResponse> listUsers(
             Authentication authentication,
             @Parameter(description = "İsteğe bağlı rol filtresi (STUDENT, ELDERLY)") @RequestParam(required = false) User.UserRole role,
             @Parameter(description = "Sayfa numarası (0'dan başlar)") @RequestParam(required = false) Integer page,
@@ -136,14 +136,8 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        boolean usePaging = page != null || size != null || search != null || sortBy != null || sortDir != null;
-        if (usePaging) {
-            UserPageResponse users = userService.listUsersByInstitutionPaged(email, role, search, page, size, sortBy,
-                    sortDir);
-            return ResponseEntity.ok(users);
-        }
-
-        List<UserResponse> users = userService.listUsersByInstitution(email, role);
+        UserPageResponse users = userService.listUsersByInstitutionPaged(email, role, search, page, size, sortBy,
+                sortDir);
         return ResponseEntity.ok(users);
     }
 

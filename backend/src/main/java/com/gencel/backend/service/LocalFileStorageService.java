@@ -86,12 +86,27 @@ public class LocalFileStorageService implements FileStorageService {
 
   @Override
   public void deleteFile(String fileUrl) {
+    if (fileUrl == null || fileUrl.isBlank()) {
+      return;
+    }
+
     try {
-      // Convert URL path to file system path
-      // e.g., /uploads/receipts/{taskId}/{fileName} →
-      // {basePath}/receipts/{taskId}/{fileName}
-      String relativePath = fileUrl.startsWith("/uploads/") ? fileUrl.substring(1) : fileUrl;
-      Path filePath = Paths.get(basePath).getParent().resolve(relativePath);
+      Path baseDir = Paths.get(basePath).toAbsolutePath().normalize();
+      String relativePath = fileUrl;
+
+      if (relativePath.startsWith("/uploads/")) {
+        relativePath = relativePath.substring("/uploads/".length());
+      } else if (relativePath.startsWith("uploads/")) {
+        relativePath = relativePath.substring("uploads/".length());
+      } else if (relativePath.startsWith("/")) {
+        relativePath = relativePath.substring(1);
+      }
+
+      Path filePath = baseDir.resolve(relativePath).normalize();
+      if (!filePath.startsWith(baseDir)) {
+        log.warn("Blocked suspicious file deletion path: {}", fileUrl);
+        return;
+      }
 
       if (Files.exists(filePath)) {
         Files.delete(filePath);

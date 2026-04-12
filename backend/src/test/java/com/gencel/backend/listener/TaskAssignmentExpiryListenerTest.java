@@ -15,6 +15,7 @@ import java.util.UUID;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class TaskAssignmentExpiryListenerTest {
@@ -37,5 +38,15 @@ class TaskAssignmentExpiryListenerTest {
     listener.onMessage(message, null);
 
     verify(taskService).handleAssignmentTimeout(taskId);
+  }
+
+  @Test
+  void onMessage_ignoresMalformedPendingAssignmentKey() {
+    Message message = mock(Message.class);
+    when(message.getBody()).thenReturn("pending_assignment:not-a-uuid".getBytes(StandardCharsets.UTF_8));
+
+    listener.onMessage(message, null);
+
+    verifyNoInteractions(taskService);
   }
 }

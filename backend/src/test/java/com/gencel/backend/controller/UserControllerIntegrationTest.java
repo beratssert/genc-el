@@ -235,7 +235,7 @@ class UserControllerIntegrationTest {
                         mockMvc.perform(get("/api/v1/user")
                                         .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
                                         .andExpect(status().isOk())
-                                        .andExpect(jsonPath("$[0].email").value("son.kullanici@test.com"));
+                                        .andExpect(jsonPath("$.items[0].email").value("son.kullanici@test.com"));
                 }
         }
 
@@ -261,8 +261,8 @@ class UserControllerIntegrationTest {
                         mockMvc.perform(get("/api/v1/user")
                                         .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
                                         .andExpect(status().isOk())
-                                        .andExpect(jsonPath("$").isArray())
-                                        .andExpect(jsonPath("$[?(@.email=='list.student@test.com')]").exists());
+                                        .andExpect(jsonPath("$.items").isArray())
+                                        .andExpect(jsonPath("$.items[?(@.email=='list.student@test.com')]").exists());
                 }
 
                 @Test
@@ -272,7 +272,7 @@ class UserControllerIntegrationTest {
                                         .param("role", "STUDENT")
                                         .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
                                         .andExpect(status().isOk())
-                                        .andExpect(jsonPath("$").isArray());
+                                        .andExpect(jsonPath("$.items").isArray());
                 }
 
                 @Test

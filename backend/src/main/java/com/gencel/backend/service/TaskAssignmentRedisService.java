@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
@@ -106,7 +107,7 @@ public class TaskAssignmentRedisService {
   private long completedTasksThisMonth(UUID studentId) {
     YearMonth currentMonth = YearMonth.now();
     LocalDateTime start = currentMonth.atDay(1).atStartOfDay();
-    LocalDateTime end = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
+    LocalDateTime end = currentMonth.atEndOfMonth().atTime(LocalTime.MAX);
     return taskRepository.countByVolunteerIdAndStatusAndUpdatedAtBetween(
         studentId,
         Task.TaskStatus.COMPLETED,

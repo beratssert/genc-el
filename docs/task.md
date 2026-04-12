@@ -19,6 +19,6 @@
     - [x] Yakın görev/öğrenci ve aktif görev endpointleri <!-- id: 16 -->
 
 - [ ] **Kalan Geliştirmeler (Opsiyonel/Ürün Kararı)** <!-- id: 17 -->
-    - [ ] User detail/history CRUD genişletmeleri <!-- id: 18 -->
+    - [x] User detail/history CRUD genişletmeleri <!-- id: 18 -->
     - [ ] Üretim ortamı WebSocket allowed origins sabitleme <!-- id: 19 -->
     - [ ] S3 gibi uzak depolama entegrasyonu (local storage yerine) <!-- id: 20 -->

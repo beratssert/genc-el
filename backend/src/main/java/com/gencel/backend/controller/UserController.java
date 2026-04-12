@@ -4,6 +4,7 @@ import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.LoginRequest;
 import com.gencel.backend.dto.LoginResponse;
+import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserPageResponse;
@@ -187,6 +188,20 @@ public class UserController {
         }
         userService.deleteUserByIdForInstitution(email, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    @Operation(summary = "Kurum kullanıcısı görev geçmişi", description = "INSTITUTION_ADMIN kendi kurumundaki STUDENT/ELDERLY kullanıcının görev geçmişini getirir.")
+    public ResponseEntity<List<TaskResponse>> getUserHistoryById(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        List<TaskResponse> response = userService.getUserHistoryForInstitution(email, id);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/nearby-students")

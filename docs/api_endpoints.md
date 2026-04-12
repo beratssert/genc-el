@@ -32,6 +32,7 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 | `POST` | `/api/v1/user` | Kuruma bağlı STUDENT/ELDERLY oluşturur. | INSTITUTION_ADMIN |
 | `GET` | `/api/v1/user` | Kurumdaki kullanıcıları listeler (opsiyonel pagination/search/sort ile). | INSTITUTION_ADMIN |
 | `GET` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı detaylı getirir. | INSTITUTION_ADMIN |
+| `GET` | `/api/v1/user/{id}/history` | Kurumdaki bir kullanıcının görev geçmişini getirir. | INSTITUTION_ADMIN |
 | `PUT` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı günceller. | INSTITUTION_ADMIN |
 | `DELETE` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı soft-delete yapar. | INSTITUTION_ADMIN |
 | `GET` | `/api/v1/user/me` | Giriş yapan kullanıcının profilini döner. | Authenticated |
@@ -112,4 +113,4 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 
 ## 7. Hala Planlananlar
 
-- `GET /api/v1/user/{id}/history`
+- (şimdilik yok)

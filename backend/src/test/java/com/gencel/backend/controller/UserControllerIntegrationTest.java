@@ -7,8 +7,10 @@ import com.gencel.backend.dto.LoginRequest;
 import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.entity.Institution;
+import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.repository.InstitutionRepository;
+import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,6 +47,9 @@ class UserControllerIntegrationTest {
 
         @Autowired
         private InstitutionRepository institutionRepository;
+
+        @Autowired
+        private TaskRepository taskRepository;
 
         @Autowired
         private PasswordEncoder passwordEncoder;
@@ -372,6 +377,48 @@ class UserControllerIntegrationTest {
                                         .andExpect(status().isNoContent());
 
                         org.assertj.core.api.Assertions.assertThat(userRepository.findById(target.getId())).isEmpty();
+                }
+
+                @Test
+                @DisplayName("GET /{id}/history kullanıcı görev geçmişini döner")
+                void shouldGetManagedUserHistoryById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.ELDERLY)
+                                        .email("managed.history@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("History")
+                                        .phoneNumber("0555")
+                                        .isActive(true)
+                                        .build());
+
+                        User volunteer = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("managed.history.volunteer@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Vol")
+                                        .lastName("User")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
+
+                        taskRepository.save(Task.builder()
+                                        .requester(target)
+                                        .volunteer(volunteer)
+                                        .status(Task.TaskStatus.COMPLETED)
+                                        .shoppingList(java.util.List.of("Ekmek"))
+                                        .note("Geçmiş test görevi")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/{id}/history", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$").isArray())
+                                        .andExpect(jsonPath("$[0].status").value("COMPLETED"));
                 }
         }
 

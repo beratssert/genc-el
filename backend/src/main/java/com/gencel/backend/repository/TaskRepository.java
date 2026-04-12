@@ -26,6 +26,9 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
         List<Task> findByVolunteerId(UUID volunteerId);
 
         @EntityGraph(attributePaths = { "requester", "volunteer" })
+        List<Task> findByRequesterIdOrVolunteerIdOrderByUpdatedAtDesc(UUID requesterId, UUID volunteerId);
+
+        @EntityGraph(attributePaths = { "requester", "volunteer" })
         Optional<Task> findFirstByVolunteerIdAndStatusInOrderByUpdatedAtDesc(UUID volunteerId,
                         List<Task.TaskStatus> statuses);
 

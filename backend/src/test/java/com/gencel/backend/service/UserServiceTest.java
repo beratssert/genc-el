@@ -7,9 +7,11 @@ import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserPageResponse;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.Institution;
+import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.exception.UserNotFoundException;
+import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +42,9 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private TaskRepository taskRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -457,6 +462,33 @@ class UserServiceTest {
             userService.deleteUserByIdForInstitution(institutionAdmin.getEmail(), target.getId());
 
             verify(userRepository).delete(target);
+        }
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcının görev geçmişini alır")
+        void shouldGetManagedUserHistory() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .build();
+
+            Task task = Task.builder()
+                    .id(UUID.randomUUID())
+                    .requester(target)
+                    .status(Task.TaskStatus.COMPLETED)
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+            when(taskRepository.findByRequesterIdOrVolunteerIdOrderByUpdatedAtDesc(target.getId(), target.getId()))
+                    .thenReturn(List.of(task));
+
+            var result = userService.getUserHistoryForInstitution(institutionAdmin.getEmail(), target.getId());
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getStatus()).isEqualTo(Task.TaskStatus.COMPLETED.name());
         }
     }
 

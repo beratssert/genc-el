@@ -1,14 +1,17 @@
 package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.TaskResponse;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UserPageResponse;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
+import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.exception.UserNotFoundException;
+import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -31,6 +34,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserLocationRealtimePublisher userLocationRealtimePublisher;
 
@@ -209,6 +213,20 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public List<TaskResponse> getUserHistoryForInstitution(String currentUserEmail, UUID userId) {
+        User admin = getInstitutionAdminOrThrow(currentUserEmail);
+        User targetUser = getManagedUserOrThrow(admin.getInstitution().getId(), userId);
+
+        return taskRepository.findByRequesterIdOrVolunteerIdOrderByUpdatedAtDesc(targetUser.getId(), targetUser.getId())
+                .stream()
+                .filter(task -> task.getRequester() != null
+                        && task.getRequester().getInstitution() != null
+                        && admin.getInstitution().getId().equals(task.getRequester().getInstitution().getId()))
+                .map(this::mapToTaskResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<UserResponse> getNearbyAvailableStudents(String currentUserEmail, Double latitude, Double longitude,
             Double radiusKm) {
         User currentUser = userRepository.findByEmail(currentUserEmail)
@@ -328,6 +346,24 @@ public class UserService {
                 .isActive(user.getIsActive())
                 .iban(user.getIban())
                 .createdAt(user.getCreatedAt())
+                .build();
+    }
+
+    private TaskResponse mapToTaskResponse(Task task) {
+        return TaskResponse.builder()
+                .id(task.getId())
+                .requesterId(task.getRequester() != null ? task.getRequester().getId() : null)
+                .volunteerId(task.getVolunteer() != null ? task.getVolunteer().getId() : null)
+                .status(task.getStatus() != null ? task.getStatus().name() : null)
+                .shoppingList(task.getShoppingList())
+                .note(task.getNote())
+                .totalAmountGiven(task.getTotalAmountGiven())
+                .changeAmount(task.getChangeAmount())
+                .receiptImageUrl(task.getReceiptImageUrl())
+                .startConfirmed(task.getStartConfirmed())
+                .deliveryConfirmed(task.getDeliveryConfirmed())
+                .createdAt(task.getCreatedAt())
+                .updatedAt(task.getUpdatedAt())
                 .build();
     }
 

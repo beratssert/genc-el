@@ -42,6 +42,7 @@ mvn clean verify
 ### GitHub Actions
 - Push/PR’da `main`, `master`, `develop` branch’lerinde otomatik çalışır
 - `mvn clean verify` ile testler koşar
+- Ayrı bir `redis-integration-test` job’u `TaskAssignmentRedisServiceIntegrationTest` için çalışır
 - main/master’da Docker image build edilir
 
 ### Docker Build

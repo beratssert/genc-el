@@ -14,6 +14,7 @@ import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,9 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskLogRepository taskLogRepository;
     private final UserRepository userRepository;
+
+    @Autowired(required = false)
+    private TaskAssignmentRedisService taskAssignmentRedisService;
 
     @Transactional
     public TaskResponse createTask(CreateTaskRequest request, String email) {
@@ -99,6 +103,82 @@ public class TaskService {
                 .orElseThrow(() -> new TaskNotFoundException("Task not found"));
 
         logAction(task, volunteer, TaskLog.TaskLogAction.ASSIGNED, "Task assigned to student volunteer.");
+        if (taskAssignmentRedisService != null) {
+            taskAssignmentRedisService.prepareAssignment(task, volunteer);
+        }
+
+        return mapToResponse(task);
+    }
+
+    @Transactional
+    public TaskResponse rejectTask(UUID taskId, String email) {
+        User volunteer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!User.UserRole.STUDENT.equals(volunteer.getRole())) {
+            throw new UnauthorizedActionException("Only STUDENT users can reject tasks");
+        }
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+
+        if (task.getVolunteer() == null || !task.getVolunteer().getId().equals(volunteer.getId())) {
+            throw new UnauthorizedActionException("You are not assigned to this task");
+        }
+
+        if (!Task.TaskStatus.ASSIGNED.equals(task.getStatus())) {
+            throw new InvalidTaskStateException("Task is not in ASSIGNED status");
+        }
+
+        return releaseAndReassign(task, volunteer, "Student rejected the task.");
+    }
+
+    @Transactional
+    public void handleAssignmentTimeout(UUID taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+
+        if (!Task.TaskStatus.ASSIGNED.equals(task.getStatus()) || task.getVolunteer() == null) {
+            return;
+        }
+
+        releaseAndReassign(task, task.getVolunteer(), "Assignment timed out.");
+    }
+
+    private TaskResponse releaseAndReassign(Task task, User releasedVolunteer, String releaseDetails) {
+        if (taskAssignmentRedisService != null) {
+            taskAssignmentRedisService.clearPendingAssignment(task.getId());
+        }
+
+        logAction(task, releasedVolunteer, TaskLog.TaskLogAction.REJECTED, releaseDetails);
+
+        var nextVolunteerOpt = taskAssignmentRedisService != null
+                ? taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())
+                : java.util.Optional.<User>empty();
+        if (nextVolunteerOpt.isPresent()) {
+            User nextVolunteer = nextVolunteerOpt.get();
+            task.setVolunteer(nextVolunteer);
+            task.setStatus(Task.TaskStatus.ASSIGNED);
+            task = taskRepository.save(task);
+
+            if (taskAssignmentRedisService != null) {
+                taskAssignmentRedisService.updatePendingAssignment(task.getId(), nextVolunteer.getId());
+            }
+            logAction(task, nextVolunteer, TaskLog.TaskLogAction.ASSIGNED,
+                    "Task reassigned to next available student.");
+
+            return mapToResponse(task);
+        }
+
+        task.setVolunteer(null);
+        task.setStatus(Task.TaskStatus.CANCELLED);
+        task = taskRepository.save(task);
+
+        if (taskAssignmentRedisService != null) {
+            taskAssignmentRedisService.clearCandidateQueue(task.getId());
+        }
+        logAction(task, null, TaskLog.TaskLogAction.CANCELLED,
+                "No available students remaining after rejection or timeout.");
 
         return mapToResponse(task);
     }
@@ -111,6 +191,9 @@ public class TaskService {
             throw new InvalidTaskStateException("Task is not in ASSIGNED status");
         }
 
+        if (taskAssignmentRedisService != null) {
+            taskAssignmentRedisService.clearPendingAssignment(taskId);
+        }
         task.setStatus(Task.TaskStatus.IN_PROGRESS);
         task.setTotalAmountGiven(request.getTotalAmountGiven());
         task = taskRepository.save(task);
@@ -128,6 +211,9 @@ public class TaskService {
             throw new InvalidTaskStateException("Task is not IN_PROGRESS");
         }
 
+        if (taskAssignmentRedisService != null) {
+            taskAssignmentRedisService.clearPendingAssignment(taskId);
+        }
         task.setStatus(Task.TaskStatus.DELIVERED);
         task.setChangeAmount(request.getChangeAmount());
         task.setReceiptImageUrl(request.getReceiptImageUrl());
@@ -154,6 +240,10 @@ public class TaskService {
             throw new InvalidTaskStateException("Task must be DELIVERED before it can be completed");
         }
 
+        if (taskAssignmentRedisService != null) {
+            taskAssignmentRedisService.clearPendingAssignment(taskId);
+            taskAssignmentRedisService.clearCandidateQueue(taskId);
+        }
         task.setStatus(Task.TaskStatus.COMPLETED);
         task = taskRepository.save(task);
 
@@ -180,6 +270,11 @@ public class TaskService {
 
         if (Task.TaskStatus.DELIVERED.equals(task.getStatus()) || Task.TaskStatus.COMPLETED.equals(task.getStatus())) {
             throw new InvalidTaskStateException("Cannot cancel a completed or delivered task");
+        }
+
+        if (taskAssignmentRedisService != null) {
+            taskAssignmentRedisService.clearPendingAssignment(taskId);
+            taskAssignmentRedisService.clearCandidateQueue(taskId);
         }
 
         if (isVolunteer) {
@@ -236,4 +331,5 @@ public class TaskService {
                 .updatedAt(task.getUpdatedAt())
                 .build();
     }
+
 }

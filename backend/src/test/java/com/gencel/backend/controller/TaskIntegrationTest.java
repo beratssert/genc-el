@@ -27,6 +27,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -149,6 +150,34 @@ public class TaskIntegrationTest {
 
         @Test
         @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void rejectTask_Success() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                TaskResponse response = TaskResponse.builder().id(taskId).status("PENDING").volunteerId(null).build();
+
+                when(taskService.rejectTask(taskId, "student@test.com")).thenReturn(response);
+
+                mockMvc.perform(put("/api/v1/tasks/{taskId}/reject", taskId)
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("PENDING"))
+                                .andExpect(jsonPath("$.volunteerId").value(nullValue()));
+        }
+
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void rejectTask_ForbiddenForNonAssignedUser() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                when(taskService.rejectTask(taskId, "student@test.com"))
+                                .thenThrow(new UnauthorizedActionException("You are not assigned to this task"));
+
+                mockMvc.perform(put("/api/v1/tasks/{taskId}/reject", taskId)
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.error").value("You are not assigned to this task"));
+        }
+
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
         void assignTask_TaskNotFound() throws Exception {
                 UUID taskId = UUID.randomUUID();
                 when(taskService.assignTask(taskId, "student@test.com"))
@@ -215,8 +244,8 @@ public class TaskIntegrationTest {
                 UUID taskId = UUID.randomUUID();
                 // negative totalAmountGiven violates @PositiveOrZero
                 String invalidJson = """
-                        { "totalAmountGiven": -10.0 }
-                        """;
+                                { "totalAmountGiven": -10.0 }
+                                """;
 
                 mockMvc.perform(put("/api/v1/tasks/{taskId}/start", taskId)
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -275,8 +304,8 @@ public class TaskIntegrationTest {
                 UUID taskId = UUID.randomUUID();
                 // negative changeAmount violates @PositiveOrZero
                 String invalidJson = """
-                        { "changeAmount": -5.0 }
-                        """;
+                                { "changeAmount": -5.0 }
+                                """;
 
                 mockMvc.perform(put("/api/v1/tasks/{taskId}/deliver", taskId)
                                 .contentType(MediaType.APPLICATION_JSON)

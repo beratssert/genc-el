@@ -30,7 +30,10 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 | Method | Endpoint | Açıklama | Yetki |
 |--------|----------|----------|-------|
 | `POST` | `/api/v1/user` | Kuruma bağlı STUDENT/ELDERLY oluşturur. | INSTITUTION_ADMIN |
-| `GET` | `/api/v1/user` | Kurumdaki kullanıcıları listeler. | INSTITUTION_ADMIN |
+| `GET` | `/api/v1/user` | Kurumdaki kullanıcıları listeler (opsiyonel pagination/search/sort ile). | INSTITUTION_ADMIN |
+| `GET` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı detaylı getirir. | INSTITUTION_ADMIN |
+| `PUT` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı günceller. | INSTITUTION_ADMIN |
+| `DELETE` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı soft-delete yapar. | INSTITUTION_ADMIN |
 | `GET` | `/api/v1/user/me` | Giriş yapan kullanıcının profilini döner. | Authenticated |
 | `PUT` | `/api/v1/user/me` | Giriş yapan kullanıcının profilini günceller. | Authenticated |
 | `PUT` | `/api/v1/user/me/location` | Giriş yapan kullanıcının canlı konumunu günceller. | Authenticated |
@@ -40,6 +43,11 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 
 ### Query Parametreleri
 - `GET /api/v1/user`: `role` (opsiyonel, `STUDENT`/`ELDERLY`)
+- `GET /api/v1/user`: `page` (opsiyonel, default `0`)
+- `GET /api/v1/user`: `size` (opsiyonel, default `20`, max `100`)
+- `GET /api/v1/user`: `search` (opsiyonel, `firstName`/`lastName`/`email` içinde arar)
+- `GET /api/v1/user`: `sortBy` (opsiyonel: `createdAt`, `firstName`, `lastName`, `email`, `role`)
+- `GET /api/v1/user`: `sortDir` (opsiyonel: `asc`/`desc`, default `desc`)
 - `GET /api/v1/user/nearby-students`: `latitude`, `longitude`, `radiusKm` (hepsi opsiyonel)
 
 ## 4. Görev Yönetimi (Task Operations)
@@ -79,6 +87,8 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 ### Topicler
 - `/topic/institutions/{institutionId}/tasks`
 - `/topic/users/{userId}/tasks`
+- `/topic/institutions/{institutionId}/locations`
+- `/topic/users/{userId}/locations`
 
 ### Event Türleri
 - `TASK_CREATED`
@@ -93,9 +103,13 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 - `TASK_CANCELLED`
 - `TASK_RECEIPT_UPLOADED`
 
+### Location Event Payload (Özet)
+- `userId`
+- `institutionId`
+- `latitude`
+- `longitude`
+- `updatedAt`
+
 ## 7. Hala Planlananlar
 
-- `GET /api/v1/user/{id}`
-- `PUT /api/v1/user/{id}`
-- `DELETE /api/v1/user/{id}`
 - `GET /api/v1/user/{id}/history`

@@ -81,7 +81,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
     String destination = Optional.ofNullable(accessor.getDestination()).orElse("");
 
-    if (destination.startsWith("/topic/users/") && destination.endsWith("/tasks")) {
+    if (destination.startsWith("/topic/users/")
+        && (destination.endsWith("/tasks") || destination.endsWith("/locations"))) {
       UUID destinationUserId = parseIdFromDestination(destination, "/topic/users/");
       if (!user.getId().equals(destinationUserId)) {
         throw new IllegalArgumentException("Cannot subscribe to another user's topic");
@@ -89,7 +90,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
       return;
     }
 
-    if (destination.startsWith("/topic/institutions/") && destination.endsWith("/tasks")) {
+    if (destination.startsWith("/topic/institutions/")
+        && (destination.endsWith("/tasks") || destination.endsWith("/locations"))) {
       UUID destinationInstitutionId = parseIdFromDestination(destination, "/topic/institutions/");
       UUID userInstitutionId = user.getInstitution() != null ? user.getInstitution().getId() : null;
       if (userInstitutionId == null || !userInstitutionId.equals(destinationInstitutionId)) {
@@ -116,7 +118,15 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
   }
 
   private UUID parseIdFromDestination(String destination, String prefix) {
-    String suffix = "/tasks";
+    String suffix;
+    if (destination.endsWith("/tasks")) {
+      suffix = "/tasks";
+    } else if (destination.endsWith("/locations")) {
+      suffix = "/locations";
+    } else {
+      throw new IllegalArgumentException("Unsupported destination format");
+    }
+
     String idPart = destination.substring(prefix.length(), destination.length() - suffix.length());
     try {
       return UUID.fromString(idPart);

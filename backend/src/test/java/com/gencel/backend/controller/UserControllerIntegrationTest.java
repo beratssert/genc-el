@@ -269,6 +269,110 @@ class UserControllerIntegrationTest {
                                         .andExpect(status().isOk())
                                         .andExpect(jsonPath("$").isArray());
                 }
+
+                @Test
+                @DisplayName("pagination/search/sort ile page response döner")
+                void shouldReturnPagedUsersWhenPagingParamsProvided() throws Exception {
+                        userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("ali.search@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Ali")
+                                        .lastName("Search")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user")
+                                        .param("page", "0")
+                                        .param("size", "10")
+                                        .param("search", "ali")
+                                        .param("sortBy", "createdAt")
+                                        .param("sortDir", "desc")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.items").isArray())
+                                        .andExpect(jsonPath("$.page").value(0))
+                                        .andExpect(jsonPath("$.size").value(10));
+                }
+        }
+
+        @Nested
+        @DisplayName("Managed user endpoints /api/v1/user/{id}")
+        class ManagedUserEndpoints {
+
+                @Test
+                @DisplayName("GET /{id} kullanıcı detayını döner")
+                void shouldGetManagedUserById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("managed.get@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("Get")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/{id}", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.email").value("managed.get@test.com"));
+                }
+
+                @Test
+                @DisplayName("PUT /{id} kullanıcı profilini günceller")
+                void shouldUpdateManagedUserById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.ELDERLY)
+                                        .email("managed.put@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("Put")
+                                        .phoneNumber("0555")
+                                        .isActive(true)
+                                        .build());
+
+                        UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                                        .firstName("UpdatedManaged")
+                                        .phoneNumber("0500 999 88 77")
+                                        .build();
+
+                        mockMvc.perform(put("/api/v1/user/{id}", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.firstName").value("UpdatedManaged"))
+                                        .andExpect(jsonPath("$.phoneNumber").value("0500 999 88 77"));
+                }
+
+                @Test
+                @DisplayName("DELETE /{id} kullanıcıyı soft-delete eder")
+                void shouldDeleteManagedUserById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("managed.delete@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("Delete")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(delete("/api/v1/user/{id}", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isNoContent());
+
+                        org.assertj.core.api.Assertions.assertThat(userRepository.findById(target.getId())).isEmpty();
+                }
         }
 
         @Nested

@@ -1,6 +1,8 @@
 package com.gencel.backend.repository;
 
 import com.gencel.backend.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,6 +23,28 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByInstitutionIdOrderByCreatedAtDesc(UUID institutionId);
 
     List<User> findByInstitutionIdAndRoleOrderByCreatedAtDesc(UUID institutionId, User.UserRole role);
+
+    Optional<User> findByIdAndInstitutionId(UUID id, UUID institutionId);
+
+    @Query("""
+            SELECT u
+            FROM User u
+            WHERE u.institution.id = :institutionId
+              AND u.role <> :excludedRole
+              AND (:role IS NULL OR u.role = :role)
+              AND (
+              :search IS NULL
+              OR LOWER(COALESCE(u.firstName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(COALESCE(u.lastName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+              OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            """)
+    Page<User> findManagedUsers(
+            @Param("institutionId") UUID institutionId,
+            @Param("role") User.UserRole role,
+            @Param("search") String search,
+            @Param("excludedRole") User.UserRole excludedRole,
+            Pageable pageable);
 
     @Query(value = """
             SELECT u.*

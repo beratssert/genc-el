@@ -3,6 +3,7 @@ package com.gencel.backend.service;
 import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.UpdateLocationRequest;
+import com.gencel.backend.dto.UserPageResponse;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
@@ -10,11 +11,18 @@ import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.exception.UserNotFoundException;
 import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -24,6 +32,10 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserLocationRealtimePublisher userLocationRealtimePublisher;
+
+    private static final Set<String> ALLOWED_USER_SORT_FIELDS = new HashSet<>(
+            Arrays.asList("createdAt", "firstName", "lastName", "email", "role"));
 
     @Transactional
     public UserResponse createUser(String currentUserEmail, CreateUserRequest request) {
@@ -82,18 +94,9 @@ public class UserService {
      * INSTITUTION_ADMIN sees only its own institution users.
      */
     public List<UserResponse> listUsersByInstitution(String currentUserEmail, User.UserRole roleFilter) {
-        User currentUser = userRepository.findByEmail(currentUserEmail)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-        if (currentUser.getRole() != User.UserRole.INSTITUTION_ADMIN) {
-            throw new UnauthorizedActionException("Only INSTITUTION_ADMIN can list users");
-        }
-
-        if (currentUser.getInstitution() == null || currentUser.getInstitution().getId() == null) {
-            throw new IllegalArgumentException("Admin user has no institution");
-        }
-
+        User currentUser = getInstitutionAdminOrThrow(currentUserEmail);
         UUID institutionId = currentUser.getInstitution().getId();
+
         List<User> users = roleFilter == null
                 ? userRepository.findByInstitutionIdOrderByCreatedAtDesc(institutionId)
                 : userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(institutionId, roleFilter);
@@ -103,6 +106,106 @@ public class UserService {
                 .filter(user -> user.getRole() != User.UserRole.INSTITUTION_ADMIN)
                 .map(this::mapToUserResponse)
                 .collect(Collectors.toList());
+    }
+
+    public UserPageResponse listUsersByInstitutionPaged(
+            String currentUserEmail,
+            User.UserRole roleFilter,
+            String search,
+            Integer page,
+            Integer size,
+            String sortBy,
+            String sortDir) {
+        User currentUser = getInstitutionAdminOrThrow(currentUserEmail);
+
+        int effectivePage = page == null ? 0 : page;
+        int effectiveSize = size == null ? 20 : size;
+        String effectiveSortBy = (sortBy == null || sortBy.isBlank()) ? "createdAt" : sortBy;
+        String effectiveSortDir = (sortDir == null || sortDir.isBlank()) ? "desc" : sortDir;
+
+        if (effectivePage < 0) {
+            throw new IllegalArgumentException("page must be >= 0");
+        }
+        if (effectiveSize <= 0 || effectiveSize > 100) {
+            throw new IllegalArgumentException("size must be between 1 and 100");
+        }
+        if (!ALLOWED_USER_SORT_FIELDS.contains(effectiveSortBy)) {
+            throw new IllegalArgumentException("sortBy is not supported");
+        }
+
+        Sort.Direction direction = "asc".equalsIgnoreCase(effectiveSortDir)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(effectivePage, effectiveSize, Sort.by(direction, effectiveSortBy));
+        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim();
+
+        Page<User> usersPage = userRepository.findManagedUsers(
+                currentUser.getInstitution().getId(),
+                roleFilter,
+                normalizedSearch,
+                User.UserRole.INSTITUTION_ADMIN,
+                pageable);
+
+        List<UserResponse> items = usersPage.getContent().stream()
+                .map(this::mapToUserResponse)
+                .collect(Collectors.toList());
+
+        return UserPageResponse.builder()
+                .items(items)
+                .page(usersPage.getNumber())
+                .size(usersPage.getSize())
+                .totalElements(usersPage.getTotalElements())
+                .totalPages(usersPage.getTotalPages())
+                .hasNext(usersPage.hasNext())
+                .hasPrevious(usersPage.hasPrevious())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserByIdForInstitution(String currentUserEmail, UUID userId) {
+        User admin = getInstitutionAdminOrThrow(currentUserEmail);
+        User targetUser = getManagedUserOrThrow(admin.getInstitution().getId(), userId);
+        return mapToUserResponse(targetUser);
+    }
+
+    @Transactional
+    public UserResponse updateUserByIdForInstitution(String currentUserEmail, UUID userId,
+            UpdateUserProfileRequest request) {
+        User admin = getInstitutionAdminOrThrow(currentUserEmail);
+        User targetUser = getManagedUserOrThrow(admin.getInstitution().getId(), userId);
+
+        if (request.getFirstName() != null) {
+            targetUser.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            targetUser.setLastName(request.getLastName());
+        }
+        if (request.getPhoneNumber() != null) {
+            targetUser.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getEmail() != null) {
+            targetUser.setEmail(request.getEmail());
+        }
+        if (request.getAddress() != null) {
+            targetUser.setAddress(request.getAddress());
+        }
+        if (request.getIban() != null) {
+            if (targetUser.getRole() == User.UserRole.STUDENT && request.getIban().isBlank()) {
+                throw new IllegalArgumentException("IBAN is required for STUDENT role");
+            }
+            targetUser.setIban(request.getIban());
+        }
+
+        targetUser = userRepository.save(targetUser);
+        return mapToUserResponse(targetUser);
+    }
+
+    @Transactional
+    public void deleteUserByIdForInstitution(String currentUserEmail, UUID userId) {
+        User admin = getInstitutionAdminOrThrow(currentUserEmail);
+        User targetUser = getManagedUserOrThrow(admin.getInstitution().getId(), userId);
+        userRepository.delete(targetUser);
     }
 
     @Transactional(readOnly = true)
@@ -197,6 +300,7 @@ public class UserService {
         user.setLongitude(request.getLongitude());
 
         user = userRepository.save(user);
+        userLocationRealtimePublisher.publishLocationUpdated(user);
         return mapToUserResponse(user);
     }
 
@@ -225,5 +329,32 @@ public class UserService {
                 .iban(user.getIban())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private User getInstitutionAdminOrThrow(String currentUserEmail) {
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (currentUser.getRole() != User.UserRole.INSTITUTION_ADMIN) {
+            throw new UnauthorizedActionException("Only INSTITUTION_ADMIN can manage users");
+        }
+
+        if (currentUser.getInstitution() == null || currentUser.getInstitution().getId() == null) {
+            throw new IllegalArgumentException("Admin user has no institution");
+        }
+
+        return currentUser;
+    }
+
+    private User getManagedUserOrThrow(UUID institutionId, UUID userId) {
+        User targetUser = userRepository.findByIdAndInstitutionId(userId, institutionId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (targetUser.getRole() == User.UserRole.INSTITUTION_ADMIN
+                || targetUser.getRole() == User.UserRole.SYSTEM_ADMIN) {
+            throw new UnauthorizedActionException("Cannot manage admin users from this endpoint");
+        }
+
+        return targetUser;
     }
 }

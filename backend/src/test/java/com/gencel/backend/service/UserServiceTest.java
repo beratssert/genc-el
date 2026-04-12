@@ -4,6 +4,7 @@ import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
+import com.gencel.backend.dto.UserPageResponse;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -40,6 +43,9 @@ class UserServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private UserLocationRealtimePublisher userLocationRealtimePublisher;
 
     @InjectMocks
     private UserService userService;
@@ -215,6 +221,44 @@ class UserServiceTest {
             verify(userRepository).findByInstitutionIdAndRoleOrderByCreatedAtDesc(institution.getId(),
                     User.UserRole.STUDENT);
         }
+
+        @Test
+        @DisplayName("sayfalı listeleme arama ve sıralama ile çalışır")
+        void shouldListUsersWithPaginationSearchAndSort() {
+            User student = User.builder()
+                    .id(UUID.randomUUID())
+                    .role(User.UserRole.STUDENT)
+                    .firstName("Ali")
+                    .email("ali@test.com")
+                    .build();
+
+            when(userRepository.findByEmail("admin@kurum.gov.tr")).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findManagedUsers(
+                    eq(institution.getId()),
+                    eq(User.UserRole.STUDENT),
+                    eq("ali"),
+                    eq(User.UserRole.INSTITUTION_ADMIN),
+                    any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(List.of(student), PageRequest.of(0, 10), 1));
+
+            UserPageResponse result = userService.listUsersByInstitutionPaged(
+                    "admin@kurum.gov.tr",
+                    User.UserRole.STUDENT,
+                    "ali",
+                    0,
+                    10,
+                    "createdAt",
+                    "desc");
+
+            assertThat(result.getItems()).hasSize(1);
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            verify(userRepository).findManagedUsers(
+                    eq(institution.getId()),
+                    eq(User.UserRole.STUDENT),
+                    eq("ali"),
+                    eq(User.UserRole.INSTITUTION_ADMIN),
+                    any(PageRequest.class));
+        }
     }
 
     @Nested
@@ -297,6 +341,7 @@ class UserServiceTest {
             assertThat(response.getLatitude()).isEqualTo(39.9334);
             assertThat(response.getLongitude()).isEqualTo(32.8597);
             verify(userRepository).save(any(User.class));
+            verify(userLocationRealtimePublisher).publishLocationUpdated(any(User.class));
         }
 
         @Test
@@ -341,6 +386,77 @@ class UserServiceTest {
             userService.deactivateMyAccount(institutionAdmin.getEmail());
 
             verify(userRepository).delete(institutionAdmin);
+        }
+    }
+
+    @Nested
+    @DisplayName("Managed user operations")
+    class ManagedUserOperations {
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcı detayını alır")
+        void shouldGetManagedUserById() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .email("target@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+
+            UserResponse response = userService.getUserByIdForInstitution(institutionAdmin.getEmail(), target.getId());
+
+            assertThat(response.getEmail()).isEqualTo("target@test.com");
+        }
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcıyı günceller")
+        void shouldUpdateManagedUser() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.ELDERLY)
+                    .firstName("Eski")
+                    .email("target2@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                    .firstName("Yeni")
+                    .phoneNumber("0500 123 45 67")
+                    .build();
+
+            UserResponse response = userService.updateUserByIdForInstitution(institutionAdmin.getEmail(),
+                    target.getId(), request);
+
+            assertThat(response.getFirstName()).isEqualTo("Yeni");
+            assertThat(response.getPhoneNumber()).isEqualTo("0500 123 45 67");
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcıyı soft-delete eder")
+        void shouldDeleteManagedUser() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+
+            userService.deleteUserByIdForInstitution(institutionAdmin.getEmail(), target.getId());
+
+            verify(userRepository).delete(target);
         }
     }
 

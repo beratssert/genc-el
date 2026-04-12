@@ -6,6 +6,7 @@ import com.gencel.backend.dto.LoginRequest;
 import com.gencel.backend.dto.LoginResponse;
 import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
+import com.gencel.backend.dto.UserPageResponse;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.service.AuthService;
@@ -22,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/user")
@@ -120,15 +122,71 @@ public class UserController {
     @GetMapping
     @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
     @Operation(summary = "Kurum kullanıcılarını listele", description = "Sadece INSTITUTION_ADMIN tarafından çağrılabilir. Kurum yöneticisinin kendi kurumuna bağlı kullanıcıları listeler; isteğe bağlı rol filtresi ile (STUDENT, ELDERLY) filtreleme yapılabilir.")
-    public ResponseEntity<List<UserResponse>> listUsers(
+    public ResponseEntity<?> listUsers(
             Authentication authentication,
-            @Parameter(description = "İsteğe bağlı rol filtresi (STUDENT, ELDERLY)") @RequestParam(required = false) User.UserRole role) {
+            @Parameter(description = "İsteğe bağlı rol filtresi (STUDENT, ELDERLY)") @RequestParam(required = false) User.UserRole role,
+            @Parameter(description = "Sayfa numarası (0'dan başlar)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "Sayfa boyutu (1-100)") @RequestParam(required = false) Integer size,
+            @Parameter(description = "Arama metni (ad, soyad, email)") @RequestParam(required = false) String search,
+            @Parameter(description = "Sıralama alanı: createdAt, firstName, lastName, email, role") @RequestParam(required = false) String sortBy,
+            @Parameter(description = "Sıralama yönü: asc/desc") @RequestParam(required = false) String sortDir) {
         String email = authentication != null ? authentication.getName() : null;
         if (email == null || email.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        boolean usePaging = page != null || size != null || search != null || sortBy != null || sortDir != null;
+        if (usePaging) {
+            UserPageResponse users = userService.listUsersByInstitutionPaged(email, role, search, page, size, sortBy,
+                    sortDir);
+            return ResponseEntity.ok(users);
+        }
+
         List<UserResponse> users = userService.listUsersByInstitution(email, role);
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    @Operation(summary = "Kurum kullanıcısı detayını getir", description = "INSTITUTION_ADMIN kendi kurumundaki STUDENT/ELDERLY kullanıcı detayını getirir.")
+    public ResponseEntity<UserResponse> getUserById(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserResponse response = userService.getUserByIdForInstitution(email, id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    @Operation(summary = "Kurum kullanıcısını güncelle", description = "INSTITUTION_ADMIN kendi kurumundaki STUDENT/ELDERLY kullanıcı profilini günceller.")
+    public ResponseEntity<UserResponse> updateUserById(
+            Authentication authentication,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserProfileRequest request) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserResponse response = userService.updateUserByIdForInstitution(email, id, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    @Operation(summary = "Kurum kullanıcısını sil (soft-delete)", description = "INSTITUTION_ADMIN kendi kurumundaki STUDENT/ELDERLY kullanıcıyı soft-delete yapar.")
+    public ResponseEntity<Void> deleteUserById(
+            Authentication authentication,
+            @PathVariable UUID id) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        userService.deleteUserByIdForInstitution(email, id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/nearby-students")

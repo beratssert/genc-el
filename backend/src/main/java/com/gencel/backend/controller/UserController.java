@@ -116,4 +116,21 @@ public class UserController {
         List<UserResponse> users = userService.listUsersByInstitution(email, role);
         return ResponseEntity.ok(users);
     }
+
+    @GetMapping("/nearby-students")
+    @PreAuthorize("hasRole('ELDERLY')")
+    @Operation(summary = "Yakındaki müsait öğrencileri listele", description = "ELDERLY kullanıcının kendi kurumundaki müsait öğrencileri konuma göre listeler.")
+    public ResponseEntity<List<UserResponse>> getNearbyStudents(
+            Authentication authentication,
+            @Parameter(description = "Opsiyonel enlem. Verilmezse kullanıcının kayıtlı enlemi kullanılır.") @RequestParam(required = false) Double latitude,
+            @Parameter(description = "Opsiyonel boylam. Verilmezse kullanıcının kayıtlı boylamı kullanılır.") @RequestParam(required = false) Double longitude,
+            @Parameter(description = "Arama yarıçapı (km). Varsayılan 5.0 km") @RequestParam(required = false) Double radiusKm) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        List<UserResponse> nearby = userService.getNearbyAvailableStudents(email, latitude, longitude, radiusKm);
+        return ResponseEntity.ok(nearby);
+    }
 }

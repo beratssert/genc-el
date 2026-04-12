@@ -40,14 +40,15 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/user/login", "/api/v1/institution/login", "/api/v1/admin/login").permitAll()
-                        // Kurum yöneticisinin kendi kurumunu güncellemesi
+                        // Kurum yöneticisinin kendi kurumunu güncellemesi / silmesi
                         .requestMatchers(HttpMethod.PUT, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
                         // Institution CRUD sadece SYSTEM_ADMIN için
                         .requestMatchers("/api/v1/institution", "/api/v1/institution/**").hasRole("SYSTEM_ADMIN")
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // Kurum yöneticisi işlemleri: INSTITUTION_ADMIN ve SYSTEM_ADMIN
-                        .requestMatchers(HttpMethod.POST, "/api/v1/user").hasAnyRole("INSTITUTION_ADMIN", "SYSTEM_ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/user").hasAnyRole("INSTITUTION_ADMIN", "SYSTEM_ADMIN")
+                        // Kurum yöneticisi işlemleri: yalnızca INSTITUTION_ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/v1/user").hasRole("INSTITUTION_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/user").hasRole("INSTITUTION_ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

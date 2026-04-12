@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Tag(
         name = "Institution Management",
-        description = "Kurum yönetimi ve kurum yöneticisi (INSTITUTION_ADMIN) ile ilgili uç noktalar."
+        description = "SYSTEM_ADMIN: tam institution CRUD. INSTITUTION_ADMIN: login, kendi kurumunu güncelle/sil (PUT/DELETE /me)."
 )
 public class InstitutionController {
 
@@ -91,6 +91,23 @@ public class InstitutionController {
         }
         InstitutionResponse response = institutionService.updateMyInstitution(email, request);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/me")
+    @Operation(
+            summary = "Kurumumu sil (soft-delete)",
+            description = "Giriş yapmış kurum yöneticisinin (INSTITUTION_ADMIN) kendi kurum kaydını soft-delete etmesini sağlar (is_active=false)."
+    )
+    @PreAuthorize("hasRole('INSTITUTION_ADMIN')")
+    public ResponseEntity<Void> deleteMyInstitution(
+            @Parameter(hidden = true) Authentication authentication
+    ) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        institutionService.deleteMyInstitution(email);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")

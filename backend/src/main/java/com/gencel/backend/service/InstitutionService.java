@@ -4,6 +4,9 @@ import com.gencel.backend.dto.CreateInstitutionRequest;
 import com.gencel.backend.dto.InstitutionResponse;
 import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.exception.InstitutionNotFoundException;
+import com.gencel.backend.exception.UnauthorizedActionException;
+import com.gencel.backend.exception.UserNotFoundException;
 import com.gencel.backend.repository.InstitutionRepository;
 import com.gencel.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +40,7 @@ public class InstitutionService {
     @Transactional
     public InstitutionResponse updateInstitution(UUID id, CreateInstitutionRequest request) {
         Institution institution = institutionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Institution not found with id: " + id));
+                .orElseThrow(() -> new InstitutionNotFoundException("Institution not found with id: " + id));
 
         institution.setName(request.getName());
         institution.setRegion(request.getRegion());
@@ -50,10 +53,10 @@ public class InstitutionService {
     @Transactional
     public InstitutionResponse updateMyInstitution(String adminEmail, CreateInstitutionRequest request) {
         User admin = userRepository.findByEmail(adminEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (admin.getRole() != User.UserRole.INSTITUTION_ADMIN) {
-            throw new IllegalArgumentException("Only INSTITUTION_ADMIN can update its own institution");
+            throw new UnauthorizedActionException("Only INSTITUTION_ADMIN can update its own institution");
         }
 
         if (admin.getInstitution() == null || admin.getInstitution().getId() == null) {
@@ -62,7 +65,7 @@ public class InstitutionService {
 
         UUID institutionId = admin.getInstitution().getId();
         Institution institution = institutionRepository.findById(institutionId)
-                .orElseThrow(() -> new IllegalArgumentException("Institution not found with id: " + institutionId));
+                .orElseThrow(() -> new InstitutionNotFoundException("Institution not found with id: " + institutionId));
 
         institution.setName(request.getName());
         institution.setRegion(request.getRegion());
@@ -73,9 +76,29 @@ public class InstitutionService {
     }
 
     @Transactional
+    public void deleteMyInstitution(String adminEmail) {
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (admin.getRole() != User.UserRole.INSTITUTION_ADMIN) {
+            throw new UnauthorizedActionException("Only INSTITUTION_ADMIN can delete its own institution");
+        }
+
+        if (admin.getInstitution() == null || admin.getInstitution().getId() == null) {
+            throw new IllegalArgumentException("Admin user has no institution");
+        }
+
+        UUID institutionId = admin.getInstitution().getId();
+        Institution institution = institutionRepository.findById(institutionId)
+                .orElseThrow(() -> new InstitutionNotFoundException("Institution not found with id: " + institutionId));
+
+        institutionRepository.delete(institution); // @SQLDelete ile soft-delete
+    }
+
+    @Transactional
     public void deleteInstitution(UUID id) {
         Institution institution = institutionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Institution not found with id: " + id));
+                .orElseThrow(() -> new InstitutionNotFoundException("Institution not found with id: " + id));
         institutionRepository.delete(institution); // @SQLDelete ile soft-delete
     }
 
@@ -87,7 +110,7 @@ public class InstitutionService {
 
     public InstitutionResponse getInstitutionById(UUID id) {
         Institution institution = institutionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Institution not found with id: " + id));
+                .orElseThrow(() -> new InstitutionNotFoundException("Institution not found with id: " + id));
         return mapToResponse(institution);
     }
 

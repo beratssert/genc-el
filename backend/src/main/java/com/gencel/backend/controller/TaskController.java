@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -123,5 +124,21 @@ public class TaskController {
                         @Parameter(description = "İptal edilecek görevin ID'si", required = true) @PathVariable UUID taskId,
                         @Parameter(hidden = true) Authentication authentication) {
                 return ResponseEntity.ok(taskService.cancelTask(taskId, authentication.getName()));
+        }
+
+        @Operation(summary = "Makbuz Yükle", description = "Yaşlı kullanıcının alışveriş makbuzunun fotoğrafını yüklemesini sağlar. Görev DELIVERED durumunda olmalıdır.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Makbuz başarıyla yüklendi", content = {
+                                        @Content(mediaType = "application/json", schema = @Schema(implementation = TaskResponse.class)) }),
+                        @ApiResponse(responseCode = "400", description = "Dosya geçersiz veya boyutu aşıyor", content = @Content),
+                        @ApiResponse(responseCode = "403", description = "Bu işlemi yapmaya yetkiniz yok", content = @Content),
+                        @ApiResponse(responseCode = "404", description = "Görev bulunamadı", content = @Content)
+        })
+        @PostMapping("/{taskId}/receipt/upload")
+        public ResponseEntity<TaskResponse> uploadTaskReceipt(
+                        @Parameter(description = "Makbuz yükleneceği görevin ID'si", required = true) @PathVariable UUID taskId,
+                        @RequestPart(value = "receiptFile", required = true) MultipartFile receiptFile,
+                        @Parameter(hidden = true) Authentication authentication) {
+                return ResponseEntity.ok(taskService.uploadTaskReceipt(taskId, authentication.getName(), receiptFile));
         }
 }

@@ -16,6 +16,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -415,6 +416,87 @@ public class TaskIntegrationTest {
                 mockMvc.perform(put("/api/v1/tasks/{taskId}/cancel", taskId)
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.error").exists());
+        }
+
+        // --- UPLOAD TASK RECEIPT ---
+
+        @Test
+        @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
+        void uploadTaskReceipt_Success() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                byte[] fileContent = "test receipt image".getBytes();
+                MockMultipartFile file = new MockMultipartFile(
+                                "receiptFile",
+                                "receipt.jpg",
+                                "image/jpeg",
+                                fileContent);
+
+                TaskResponse response = TaskResponse.builder()
+                                .id(taskId)
+                                .status("DELIVERED")
+                                .receiptImageUrl("/uploads/receipts/" + taskId + "/receipt.jpg")
+                                .build();
+
+                when(taskService.uploadTaskReceipt(eq(taskId), eq("elderly@test.com"), any()))
+                                .thenReturn(response);
+
+                mockMvc.perform(multipart("/api/v1/tasks/{taskId}/receipt/upload", taskId)
+                                .file(file)
+                                .with(request -> {
+                                        request.setMethod("POST");
+                                        return request;
+                                }))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.receiptImageUrl").exists())
+                                .andExpect(jsonPath("$.status").value("DELIVERED"));
+        }
+
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void uploadTaskReceipt_Forbidden_NotRequester() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                MockMultipartFile file = new MockMultipartFile(
+                                "receiptFile",
+                                "receipt.jpg",
+                                "image/jpeg",
+                                "test".getBytes());
+
+                when(taskService.uploadTaskReceipt(eq(taskId), eq("student@test.com"), any()))
+                                .thenThrow(new UnauthorizedActionException(
+                                                "Only the task requester can upload receipts"));
+
+                mockMvc.perform(multipart("/api/v1/tasks/{taskId}/receipt/upload", taskId)
+                                .file(file)
+                                .with(request -> {
+                                        request.setMethod("POST");
+                                        return request;
+                                }))
+                                .andExpect(status().isForbidden())
+                                .andExpect(jsonPath("$.error").exists());
+        }
+
+        @Test
+        @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
+        void uploadTaskReceipt_BadRequest_TaskNotDelivered() throws Exception {
+                UUID taskId = UUID.randomUUID();
+                MockMultipartFile file = new MockMultipartFile(
+                                "receiptFile",
+                                "receipt.jpg",
+                                "image/jpeg",
+                                "test".getBytes());
+
+                when(taskService.uploadTaskReceipt(eq(taskId), eq("elderly@test.com"), any()))
+                                .thenThrow(new InvalidTaskStateException(
+                                                "Receipt can only be uploaded after task is DELIVERED"));
+
+                mockMvc.perform(multipart("/api/v1/tasks/{taskId}/receipt/upload", taskId)
+                                .file(file)
+                                .with(request -> {
+                                        request.setMethod("POST");
+                                        return request;
+                                }))
+                                .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.error").exists());
         }
 }

@@ -20,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +49,9 @@ public class TaskServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private FileStorageService fileStorageService;
+
     @InjectMocks
     private TaskService taskService;
 
@@ -59,6 +63,7 @@ public class TaskServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(taskService, "taskAssignmentRedisService", taskAssignmentRedisService);
         ReflectionTestUtils.setField(taskService, "notificationService", notificationService);
+        ReflectionTestUtils.setField(taskService, "fileStorageService", fileStorageService);
 
         elderlyUser = User.builder()
                 .id(UUID.randomUUID())
@@ -683,6 +688,78 @@ public class TaskServiceTest {
 
         TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
                 () -> taskService.cancelTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
+    }
+
+    // --- uploadTaskReceipt Tests ---
+
+    @Test
+    void uploadTaskReceipt_Success() {
+        task.setStatus(Task.TaskStatus.DELIVERED);
+        task.setVolunteer(studentUser);
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+        when(mockFile.getOriginalFilename()).thenReturn("receipt.jpg");
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(fileStorageService.uploadFile(mockFile, task.getId()))
+                .thenReturn("/uploads/receipts/" + task.getId() + "/receipt.jpg");
+        when(taskRepository.save(any(Task.class))).thenReturn(task);
+
+        TaskResponse response = taskService.uploadTaskReceipt(task.getId(), elderlyUser.getEmail(), mockFile);
+
+        assertNotNull(response);
+        assertEquals(Task.TaskStatus.DELIVERED.name(), response.getStatus());
+        verify(fileStorageService).validateFile(mockFile);
+        verify(fileStorageService).uploadFile(mockFile, task.getId());
+        verify(taskRepository).save(task);
+        verify(taskLogRepository).save(any(TaskLog.class));
+        verify(notificationService).notifyTaskProgress(eq(studentUser), eq(task), any(), any());
+    }
+
+    @Test
+    void uploadTaskReceipt_ThrowsException_WhenNotRequester() {
+        task.setStatus(Task.TaskStatus.DELIVERED);
+        User anotherElderly = User.builder().id(UUID.randomUUID()).email("anotherelderly@test.com")
+                .role(User.UserRole.ELDERLY).build();
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        when(userRepository.findByEmail(anotherElderly.getEmail())).thenReturn(Optional.of(anotherElderly));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.uploadTaskReceipt(task.getId(), anotherElderly.getEmail(), mockFile));
+
+        assertEquals("Only the task requester can upload receipts", exception.getMessage());
+    }
+
+    @Test
+    void uploadTaskReceipt_ThrowsException_WhenTaskNotDelivered() {
+        task.setStatus(Task.TaskStatus.IN_PROGRESS);
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
+                () -> taskService.uploadTaskReceipt(task.getId(), elderlyUser.getEmail(), mockFile));
+
+        assertEquals("Receipt can only be uploaded after task is DELIVERED", exception.getMessage());
+    }
+
+    @Test
+    void uploadTaskReceipt_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.uploadTaskReceipt(task.getId(), elderlyUser.getEmail(), mockFile));
 
         assertEquals("Task not found", exception.getMessage());
     }

@@ -4,6 +4,7 @@ import com.gencel.backend.dto.CreateTaskRequest;
 import com.gencel.backend.dto.DeliverTaskRequest;
 import com.gencel.backend.dto.StartTaskRequest;
 import com.gencel.backend.dto.TaskResponse;
+import org.springframework.web.multipart.MultipartFile;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
 import com.gencel.backend.entity.User;
@@ -29,6 +30,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskLogRepository taskLogRepository;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     @Autowired(required = false)
     private TaskAssignmentRedisService taskAssignmentRedisService;
@@ -383,6 +385,44 @@ public class TaskService {
         task = taskRepository.save(task);
 
         logAction(task, user, TaskLog.TaskLogAction.CANCELLED, "Task cancelled by user.");
+
+        return mapToResponse(task);
+    }
+
+    @Transactional
+    public TaskResponse uploadTaskReceipt(UUID taskId, String email, MultipartFile receiptFile) {
+        User requester = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+
+        if (!task.getRequester().getId().equals(requester.getId())) {
+            throw new UnauthorizedActionException("Only the task requester can upload receipts");
+        }
+
+        if (!Task.TaskStatus.DELIVERED.equals(task.getStatus())) {
+            throw new InvalidTaskStateException("Receipt can only be uploaded after task is DELIVERED");
+        }
+
+        // Delete old receipt if exists
+        if (task.getReceiptImageUrl() != null && !task.getReceiptImageUrl().isEmpty()) {
+            fileStorageService.deleteFile(task.getReceiptImageUrl());
+        }
+
+        // Validate and upload new receipt
+        fileStorageService.validateFile(receiptFile);
+        String receiptUrl = fileStorageService.uploadFile(receiptFile, taskId);
+
+        task.setReceiptImageUrl(receiptUrl);
+        task = taskRepository.save(task);
+
+        logAction(task, requester, TaskLog.TaskLogAction.RECEIPT_UPLOADED,
+                "Receipt uploaded: " + receiptFile.getOriginalFilename());
+
+        notificationService.notifyTaskProgress(task.getVolunteer(), task,
+                "Makbuz Yüklendi",
+                "Yaşlı kullanıcı alışveriş makbuzunu yükledi.");
 
         return mapToResponse(task);
     }

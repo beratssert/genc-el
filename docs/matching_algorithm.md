@@ -1,13 +1,14 @@
-# Bildirim ve Eşleşme Algoritması (Redis + Queue)
+# Bildirim ve Eşleşme Algoritması (Redis + Queue + Realtime)
 
 Bu doküman, "Yaşlı bir birey talep oluşturduğunda, sırayla en uygun öğrencinin nasıl bulunacağı" sürecini teknik olarak açıklar.
 
 ## Kullanılan Teknolojiler
-- **PostgreSQL (PostGIS):** Yakındaki öğrencileri bulmak için.
-- **PostgreSQL:** Yakındaki öğrencileri veritabanı tarafında filtrelemek için; mevcut sorgu PostGIS'e taşınmaya uygun.
+- **PostgreSQL:** Yakındaki öğrencileri ve bekleyen görevleri filtrelemek için (Haversine tabanlı sorgular).
 - **Redis List:** Aday öğrencileri sıraya dizmek için.
 - **Redis Key-Value (TTL):** Cevap süresini (10dk) yönetmek için.
-- **Spring Boot Event Listener:** Redis'ten gelen "Süre Doldu" (Expiration) olaylarını dinlemek için.
+- **Spring Boot Event Listener:** Redis'ten gelen süre dolumu olaylarını dinlemek için.
+- **FCM:** Kullanıcıya push bildirim göndermek için.
+- **WebSocket/STOMP:** Task durumlarını anlık yayınlamak için.
 
 ## Algoritma Akışı
 
@@ -28,13 +29,14 @@ Ayşe Teyze "Öğrenci Çağır" butonuna bastığında:
     - **Key:** `pending_assignment:{taskId}`
     - **Value:** `StudentId_1`
     - **TTL (Süre):** 10 Dakika (600 saniye).
-3.  Öğrenciye **Firebase (FCM)** üzerinden bildirim gider: *"Yakınında yeni bir talep var! Kabul etmek için 10 dakikan var."*
+3.  Öğrenciye FCM üzerinden bildirim gider.
+4.  Aynı anda realtime event yayınlanır (`TASK_ASSIGNED` / `TASK_REASSIGNED`) ve UI anlık güncellenir.
 
 ### 3. Senaryolar
 
 #### Senaryo A: Öğrenci Kabul Eder (Happy Path)
 1.  Ahmet (StudentId_1) "Kabul Et" butonuna basar.
-2.  API'ye `PUT /tasks/{id}/accept` isteği gelir.
+2.  API'ye `PUT /api/v1/tasks/{taskId}/assign` isteği gelir.
 3.  Backend:
     - Redis'teki `pending_assignment:{taskId}` anahtarını siler (Süreyi durdurur).
     - Redis'teki `task_candidates:{taskId}` listesini siler (Diğerlerine gerek kalmadı).
@@ -43,7 +45,7 @@ Ayşe Teyze "Öğrenci Çağır" butonuna bastığında:
 
 #### Senaryo B: Öğrenci Reddeder
 1.  Ahmet "Reddet" butonuna basar.
-2.  API'ye `PUT /tasks/{id}/reject` isteği gelir.
+2.  API'ye `PUT /api/v1/tasks/{taskId}/reject` isteği gelir.
 3.  Backend:
     - Redis'teki `pending_assignment:{taskId}` anahtarını siler.
     - **Döngü:** Kuyrukta (Redis List) bir sonraki öğrenci var mı?
@@ -64,6 +66,22 @@ Ayşe Teyze "Öğrenci Çağır" butonuna bastığında:
 | :--- | :--- | :--- | :--- |
 | `task_candidates:{taskId}` | List | Olası adayların listesi | 1 Saat (Task iptal olmazsa diye) |
 | `pending_assignment:{taskId}` | String | Şu an cevap beklenen öğrenci | **10 Dakika** |
+
+## Realtime Yayın Kanalı
+
+- STOMP endpoint: `/ws`
+- Institution topic: `/topic/institutions/{institutionId}/tasks`
+- User topic: `/topic/users/{userId}/tasks`
+
+Yayınlanan başlıca eventler:
+- `TASK_CREATED`
+- `TASK_ASSIGNED`
+- `TASK_REASSIGNED`
+- `TASK_STARTED`
+- `TASK_DELIVERED`
+- `TASK_COMPLETED`
+- `TASK_CANCELLED`
+- `TASK_RECEIPT_UPLOADED`
 
 ## Avantajları
 - **Yüksek Performans:** Süre sayımı ve kuyruk yönetimi tamamen bellekte (RAM) döner.

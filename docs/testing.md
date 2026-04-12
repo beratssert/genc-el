@@ -7,18 +7,30 @@ Bu projede kapsamlı otomatik testler CI/Docker pipeline'da çalıştırılır. 
 ### 1. Unit Testler (Service Katmanı)
 - `InstitutionServiceTest` – Kurum CRUD mantığı
 - `UserServiceTest` – Kullanıcı oluşturma, liste filtreleme, validasyon
-- `AuthServiceTest` – userLogin / institutionLogin, hatalı giriş senaryoları
+- `TaskServiceTest` – görev yaşam döngüsü, nearby, my-active-task, confirmation akışları
+- `AuthServiceTest` – login + refresh token + change password
+- `BursaryServiceTest` – burs hesaplama/ödeme iş mantığı
+- `DashboardServiceTest` – role bazlı dashboard istatistikleri
+- `TaskAssignmentRedisServiceTest` – redis queue işlemleri (mocklu)
+- `TaskAssignmentExpiryListenerTest` – redis TTL expiry listener davranışı
 
 ### 2. Integration Testler (Controller Katmanı)
 - `InstitutionControllerIntegrationTest` – API endpoint’leri (POST/GET institution, login)
-- `UserControllerIntegrationTest` – User login, create, list (JWT/auth simülasyonu ile)
-- `RepositoryIntegrationTest` – JPA entity’ler ve repository’ler (Institution, User, Task, TaskLog, BursaryHistory)
+- `UserControllerIntegrationTest` – user login/profile/device-token/nearby-students
+- `TaskIntegrationTest` – task endpointleri (`nearby`, `my-active-task`, confirmation vb.)
+- `AuthControllerIntegrationTest` – refresh-token ve change-password endpointleri
+- `AdminControllerIntegrationTest` – system admin login endpointi
+- `BursaryIntegrationTest` – burs endpointleri
+- `DashboardIntegrationTest` – dashboard endpointi
 
-### 3. Redis Integration Testler (Service + Gerçek Redis)
+### 3. Repository Integration Testler
+- `RepositoryIntegrationTest` – JPA entity/repository davranışları
+
+### 4. Redis Integration Testler (Service + Gerçek Redis)
 - `TaskAssignmentRedisServiceIntegrationTest` – Gerçek Redis container ile kuyruk/pending key davranışı
 - Testcontainers ile `redis:7-alpine` ayağa kaldırılır, `TaskAssignmentRedisService` uçtan uca doğrulanır
 
-### 4. Test Konfigürasyonu
+### 5. Test Konfigürasyonu
 - **Profil:** `test`
 - **Veritabanı:** H2 in-memory (PostgreSQL uyumlu mod)
 - **Redis:** Test ortamında devre dışı (`RedisAutoConfiguration` exclude)

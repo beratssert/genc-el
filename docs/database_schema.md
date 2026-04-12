@@ -1,6 +1,6 @@
 # Veritabanı Şeması (PostgreSQL)
 
-Proje için **İlişkisel Veritabanı (Relational Database)** tasarımı aşağıdadır. Kullanıcı geri bildirimi üzerine alışveriş listesi metin/JSON olarak revize edilmiştir.
+Proje için ilişkisel veritabanı tasarımı aşağıdadır. Şema, mevcut backend entity'leri ile senkron olacak şekilde güncellenmiştir.
 
 ## ER Diyagramı
 
@@ -24,7 +24,7 @@ erDiagram
     USER {
         UUID id PK
         UUID institution_id FK
-        String role "STUDENT, ELDERLY, INSTITUTION_ADMIN"
+        String role "STUDENT, ELDERLY, INSTITUTION_ADMIN, SYSTEM_ADMIN"
         String first_name
         String last_name
         String phone_number
@@ -33,6 +33,7 @@ erDiagram
         String address
         Double latitude
         Double longitude
+        String fcm_token "Device push token"
         Boolean is_active "Soft delete"
         String iban "For Students"
         Timestamp created_at
@@ -61,6 +62,8 @@ erDiagram
         Double total_amount_given
         Double change_amount
         String receipt_image_url
+        Boolean start_confirmed
+        Boolean delivery_confirmed
         Boolean is_active "Soft delete"
         Timestamp created_at
         Timestamp updated_at
@@ -69,7 +72,7 @@ erDiagram
     TASK_LOG {
         UUID id PK
         UUID task_id FK
-        String action "CREATED, ASSIGNED, SHOPPING_STARTED, DELIVERED, COMPLETED, CANCELLED"
+        String action "CREATED, ASSIGNED, REJECTED, START_CONFIRMED, SHOPPING_STARTED, DELIVERED, DELIVERY_CONFIRMED, RECEIPT_UPLOADED, COMPLETED, CANCELLED"
         UUID user_id FK "Who performed the action"
         String details
         Timestamp timestamp
@@ -88,16 +91,17 @@ Kurumların (Belediye, STK vb.) tutulduğu tablo.
 - `created_at`: Kayıt tarihi.
 
 ### 2. `users` (Kullanıcılar)
-Tüm kullanıcı rollerini tek tabloda tutuyoruz (Single Table).
+Tüm kullanıcı rollerini tek tabloda tutulur (Single Table).
 - `id`: Primary Key (UUID)
 - `institution_id`: Hangi kuruma bağlı olduğu (Foreign Key).
-- `role`: Kullanıcının rolü (`STUDENT`, `ELDERLY`, `INSTITUTION_ADMIN`).
+- `role`: Kullanıcının rolü (`STUDENT`, `ELDERLY`, `INSTITUTION_ADMIN`, `SYSTEM_ADMIN`).
 - `first_name`, `last_name`: Ad Soyad.
 - `phone_number`: İletişim numarası.
 - `email`: E-posta adresi (Unique, Login için).
 - `password_hash`: Şifre hash'i.
 - `address`: Açık adres.
 - `latitude`, `longitude`: Konum tabanlı eşleşme için koordinatlar.
+- `fcm_token`: Mobil cihaz push bildirimi tokenı.
 - `is_active`: Kullanıcı hesabını kapatırsa veya dondurursa false olur (Soft Delete).
 - `iban`: Sadece öğrenciler için, burs ödemesi yapılacak hesap no.
 - `created_at`: Kayıt tarihi.
@@ -132,6 +136,8 @@ Ana işlem tablosu.
 - `total_amount_given`: Yaşlının öğrenciye teslim ettiği para.
 - `change_amount`: Alışveriş sonrası artan para üstü.
 - `receipt_image_url`: Yüklenen alışveriş fişinin dosya yolu/URL'i.
+- `start_confirmed`: Yaşlı kullanıcı başlangıcı onayladı mı?
+- `delivery_confirmed`: Yaşlı kullanıcı teslimatı onayladı mı?
 - `is_active`: Soft delete için (True/False).
 - `created_at`, `updated_at`: Kayıt oluşturulma ve güncelleme tarihleri.
 
@@ -139,7 +145,7 @@ Ana işlem tablosu.
 Bir görevin durum değişikliklerini loglamak için (Audit trail).
 - `id`: Primary Key (UUID)
 - `task_id`: Hangi göreve ait olduğu (Task FK).
-- `action`: Yapılan işlem (`CREATED`, `ASSIGNED`, `SHOPPING_STARTED`, `DELIVERED`, `COMPLETED`, `CANCELLED`).
+- `action`: Yapılan işlem (ör. `CREATED`, `ASSIGNED`, `REJECTED`, `START_CONFIRMED`, `SHOPPING_STARTED`, `DELIVERED`, `DELIVERY_CONFIRMED`, `RECEIPT_UPLOADED`, `COMPLETED`, `CANCELLED`).
 - `user_id`: İşlemi yapan kullanıcı (User FK).
 - `details`: İşlemle ilgili ek detaylar/açıklama.
 - `timestamp`: İşlem zamanı.

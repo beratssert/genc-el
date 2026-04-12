@@ -109,6 +109,8 @@ public class AuthService {
                 .token(token)
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .userId(user.getId().toString())
+                .institutionId(user.getInstitution() != null ? user.getInstitution().getId().toString() : null)
                 .build();
     }
 }

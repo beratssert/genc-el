@@ -64,6 +64,8 @@ CREATE TABLE tasks (
     total_amount_given DOUBLE PRECISION,
     change_amount DOUBLE PRECISION,
     receipt_image_url TEXT,
+    start_confirmed BOOLEAN DEFAULT FALSE,
+    delivery_confirmed BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -160,9 +162,9 @@ INSERT INTO bursary_history (student_id, year, month, completed_task_count, calc
 
 -- Görevler
 INSERT INTO tasks (id, requester_id, volunteer_id, status, shopping_list, note, total_amount_given, change_amount, receipt_image_url) VALUES 
-('10000000-0000-0000-0000-000000000001', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'COMPLETED', '{"items": [{"name": "Ekmek", "qty": 2}]}', 'Taze olsun.', 100.0, 45.5, 'https://receipt.url'),
-('20000000-0000-0000-0000-000000000002', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), (SELECT id FROM users WHERE email = 'burak@istanbul.com'), 'IN_PROGRESS', '{"items": [{"name": "İlaç"}]}', 'Acil.', NULL, NULL, NULL),
-('30000000-0000-0000-0000-000000000003', (SELECT id FROM users WHERE email = 'hikmet@izmir.com'), NULL, 'PENDING', '{"items": [{"name": "Gazete"}]}', 'Hürriyet.', NULL, NULL, NULL);
+('10000000-0000-0000-0000-000000000001', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'COMPLETED', '["2 Adet Ekmek", "1 lt Süt"]', 'Taze olsun.', 100.0, 45.5, 'https://receipt.url'),
+('20000000-0000-0000-0000-000000000002', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), (SELECT id FROM users WHERE email = 'burak@istanbul.com'), 'IN_PROGRESS', '["Aspirin", "Ağrı Kesici"]', 'Acil.', NULL, NULL, NULL),
+('30000000-0000-0000-0000-000000000003', (SELECT id FROM users WHERE email = 'hikmet@izmir.com'), NULL, 'PENDING', '["Günlük Gazete"]', 'Hürriyet.', NULL, NULL, NULL);
 
 -- Loglar
 INSERT INTO task_logs (task_id, action, user_id, details) VALUES 

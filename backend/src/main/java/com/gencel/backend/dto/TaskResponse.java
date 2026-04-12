@@ -45,6 +45,12 @@ public class TaskResponse {
     @Schema(description = "Alışveriş fişinin görsel URL'si", example = "https://storage.example.com/receipts/123.jpg", nullable = true)
     private String receiptImageUrl;
 
+    @Schema(description = "Görev başlamadan önce yaşlı tarafından onay verildi mi?")
+    private Boolean startConfirmed;
+
+    @Schema(description = "Teslimattan sonra yaşlı tarafından onay verildi mi?")
+    private Boolean deliveryConfirmed;
+
     @Schema(description = "Görevin oluşturulma tarihi")
     private LocalDateTime createdAt;
 

@@ -33,6 +33,9 @@ public class TaskService {
     @Autowired(required = false)
     private TaskAssignmentRedisService taskAssignmentRedisService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Transactional
     public TaskResponse createTask(CreateTaskRequest request, String email) {
         User requester = userRepository.findByEmail(email)
@@ -106,6 +109,9 @@ public class TaskService {
         if (taskAssignmentRedisService != null) {
             taskAssignmentRedisService.prepareAssignment(task, volunteer);
         }
+        notificationService.notifyTaskAssigned(volunteer, task,
+                "Yeni görev atandı",
+                "Yakınında yeni bir görev var. Kabul edilen görevi görüntüleyebilirsin.");
 
         return mapToResponse(task);
     }
@@ -166,6 +172,9 @@ public class TaskService {
             }
             logAction(task, nextVolunteer, TaskLog.TaskLogAction.ASSIGNED,
                     "Task reassigned to next available student.");
+            notificationService.notifyTaskAssigned(nextVolunteer, task,
+                    "Yeni görev atandı",
+                    "Bir önceki öğrenci görevi kabul etmedi. Görev sana atandı.");
 
             return mapToResponse(task);
         }
@@ -179,6 +188,38 @@ public class TaskService {
         }
         logAction(task, null, TaskLog.TaskLogAction.CANCELLED,
                 "No available students remaining after rejection or timeout.");
+        notificationService.notifyTaskCancelled(task.getRequester(), task,
+                "Görev için öğrenci bulunamadı",
+                "Şu anda uygun bir öğrenci bulunamadı. Lütfen daha sonra tekrar deneyin.");
+
+        return mapToResponse(task);
+    }
+
+    @Transactional
+    public TaskResponse confirmStartTask(UUID taskId, String email, StartTaskRequest request) {
+        User requester = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+
+        if (!task.getRequester().getId().equals(requester.getId())) {
+            throw new UnauthorizedActionException("Only the requester can confirm the task start");
+        }
+
+        if (!Task.TaskStatus.ASSIGNED.equals(task.getStatus())) {
+            throw new InvalidTaskStateException("Task must be ASSIGNED before start confirmation");
+        }
+
+        task.setTotalAmountGiven(request.getTotalAmountGiven());
+        task.setStartConfirmed(true);
+        task = taskRepository.save(task);
+
+        logAction(task, requester, TaskLog.TaskLogAction.START_CONFIRMED,
+                "Requester confirmed amount before shopping started.");
+        notificationService.notifyTaskProgress(task.getVolunteer(), task,
+                "Görev başlangıcı onaylandı",
+                "Yaşlı kullanıcı verilen tutarı onayladı. Alışverişe başlayabilirsin.");
 
         return mapToResponse(task);
     }
@@ -191,14 +232,24 @@ public class TaskService {
             throw new InvalidTaskStateException("Task is not in ASSIGNED status");
         }
 
+        if (!Boolean.TRUE.equals(task.getStartConfirmed())) {
+            throw new InvalidTaskStateException("Task must be confirmed by the requester before shopping starts");
+        }
+
+        if (task.getTotalAmountGiven() == null && request.getTotalAmountGiven() != null) {
+            task.setTotalAmountGiven(request.getTotalAmountGiven());
+        }
+
         if (taskAssignmentRedisService != null) {
             taskAssignmentRedisService.clearPendingAssignment(taskId);
         }
         task.setStatus(Task.TaskStatus.IN_PROGRESS);
-        task.setTotalAmountGiven(request.getTotalAmountGiven());
         task = taskRepository.save(task);
 
         logAction(task, task.getVolunteer(), TaskLog.TaskLogAction.SHOPPING_STARTED, "Student started shopping.");
+        notificationService.notifyTaskProgress(task.getRequester(), task,
+                "Alışveriş başladı",
+                "Öğrenci alışverişe başladı ve görev ilerliyor.");
 
         return mapToResponse(task);
     }
@@ -215,11 +266,48 @@ public class TaskService {
             taskAssignmentRedisService.clearPendingAssignment(taskId);
         }
         task.setStatus(Task.TaskStatus.DELIVERED);
+        task.setDeliveryConfirmed(false);
         task.setChangeAmount(request.getChangeAmount());
         task.setReceiptImageUrl(request.getReceiptImageUrl());
         task = taskRepository.save(task);
 
         logAction(task, task.getVolunteer(), TaskLog.TaskLogAction.DELIVERED, "Student delivered the task.");
+        notificationService.notifyTaskProgress(task.getRequester(), task,
+                "Teslimat yapıldı",
+                "Ürünler ve para üstü teslim edildi. Onay bekleniyor.");
+
+        return mapToResponse(task);
+    }
+
+    @Transactional
+    public TaskResponse confirmDeliveryTask(UUID taskId, String email) {
+        User requester = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new TaskNotFoundException("Task not found"));
+
+        if (!task.getRequester().getId().equals(requester.getId())) {
+            throw new UnauthorizedActionException("Only the requester can confirm delivery");
+        }
+
+        if (!Task.TaskStatus.DELIVERED.equals(task.getStatus())) {
+            throw new InvalidTaskStateException("Task must be DELIVERED before delivery confirmation");
+        }
+
+        if (task.getChangeAmount() == null || task.getReceiptImageUrl() == null
+                || task.getReceiptImageUrl().isBlank()) {
+            throw new InvalidTaskStateException(
+                    "Delivered task must include change amount and receipt image before confirmation");
+        }
+
+        task.setDeliveryConfirmed(true);
+        task = taskRepository.save(task);
+
+        logAction(task, requester, TaskLog.TaskLogAction.DELIVERY_CONFIRMED, "Requester confirmed the delivered task.");
+        notificationService.notifyTaskProgress(task.getVolunteer(), task,
+                "Teslimat onaylandı",
+                "Yaşlı kullanıcı teslimatı onayladı. Görevi kapatabilirsin.");
 
         return mapToResponse(task);
     }
@@ -240,6 +328,10 @@ public class TaskService {
             throw new InvalidTaskStateException("Task must be DELIVERED before it can be completed");
         }
 
+        if (!Boolean.TRUE.equals(task.getDeliveryConfirmed())) {
+            throw new InvalidTaskStateException("Task must be confirmed by the requester before completion");
+        }
+
         if (taskAssignmentRedisService != null) {
             taskAssignmentRedisService.clearPendingAssignment(taskId);
             taskAssignmentRedisService.clearCandidateQueue(taskId);
@@ -248,6 +340,9 @@ public class TaskService {
         task = taskRepository.save(task);
 
         logAction(task, requester, TaskLog.TaskLogAction.COMPLETED, "Requester marked task as completed.");
+        notificationService.notifyTaskProgress(task.getVolunteer(), task,
+                "Görev tamamlandı",
+                "Talep sahibi teslimatı onayladı. Görev başarıyla kapandı.");
 
         return mapToResponse(task);
     }
@@ -327,6 +422,8 @@ public class TaskService {
                 .totalAmountGiven(task.getTotalAmountGiven())
                 .changeAmount(task.getChangeAmount())
                 .receiptImageUrl(task.getReceiptImageUrl())
+                .startConfirmed(task.getStartConfirmed())
+                .deliveryConfirmed(task.getDeliveryConfirmed())
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
                 .build();

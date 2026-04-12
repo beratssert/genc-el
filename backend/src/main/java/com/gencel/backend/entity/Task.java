@@ -57,6 +57,14 @@ public class Task {
     @Column(name = "receipt_image_url")
     private String receiptImageUrl;
 
+    @Column(name = "start_confirmed")
+    @Builder.Default
+    private Boolean startConfirmed = false;
+
+    @Column(name = "delivery_confirmed")
+    @Builder.Default
+    private Boolean deliveryConfirmed = false;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

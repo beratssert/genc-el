@@ -1,6 +1,7 @@
 package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
@@ -143,6 +144,16 @@ public class UserService {
     }
 
     @Transactional
+    public UserResponse updateMyFcmToken(String email, UpdateFcmTokenRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        user.setFcmToken(request.getFcmToken().trim());
+        user = userRepository.save(user);
+        return mapToUserResponse(user);
+    }
+
+    @Transactional
     public void deactivateMyAccount(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -162,6 +173,7 @@ public class UserService {
                 .address(user.getAddress())
                 .latitude(user.getLatitude())
                 .longitude(user.getLongitude())
+                .fcmToken(user.getFcmToken())
                 .isActive(user.getIsActive())
                 .iban(user.getIban())
                 .createdAt(user.getCreatedAt())

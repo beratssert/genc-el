@@ -45,6 +45,9 @@ public class TaskServiceTest {
     @Mock
     private TaskAssignmentRedisService taskAssignmentRedisService;
 
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private TaskService taskService;
 
@@ -55,6 +58,7 @@ public class TaskServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(taskService, "taskAssignmentRedisService", taskAssignmentRedisService);
+        ReflectionTestUtils.setField(taskService, "notificationService", notificationService);
 
         elderlyUser = User.builder()
                 .id(UUID.randomUUID())
@@ -391,6 +395,45 @@ public class TaskServiceTest {
         verify(taskLogRepository, atLeastOnce()).save(any(TaskLog.class));
     }
 
+    // --- confirmStartTask Tests ---
+
+    @Test
+    void confirmStartTask_Success() {
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
+
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenReturn(task);
+
+        TaskResponse response = taskService.confirmStartTask(task.getId(), elderlyUser.getEmail(), request);
+
+        assertNotNull(response);
+        assertEquals(Boolean.TRUE, response.getStartConfirmed());
+        assertEquals(java.math.BigDecimal.valueOf(100.0), response.getTotalAmountGiven());
+        verify(taskRepository).save(task);
+        verify(taskLogRepository).save(any(TaskLog.class));
+    }
+
+    @Test
+    void confirmStartTask_ThrowsException_WhenNotRequester() {
+        StartTaskRequest request = StartTaskRequest.builder().build();
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.confirmStartTask(task.getId(), studentUser.getEmail(), request));
+
+        assertEquals("Only the requester can confirm the task start", exception.getMessage());
+    }
+
     // --- startTask Tests ---
 
     @Test
@@ -400,6 +443,8 @@ public class TaskServiceTest {
                 .build();
         task.setVolunteer(studentUser);
         task.setStatus(Task.TaskStatus.ASSIGNED);
+        task.setStartConfirmed(true);
+        task.setTotalAmountGiven(java.math.BigDecimal.valueOf(100.0));
 
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
@@ -523,6 +568,7 @@ public class TaskServiceTest {
     @Test
     void completeTask_Success() {
         task.setStatus(Task.TaskStatus.DELIVERED);
+        task.setDeliveryConfirmed(true);
 
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));

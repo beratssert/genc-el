@@ -142,12 +142,13 @@ public class UserService {
                 : Sort.Direction.DESC;
 
         Pageable pageable = PageRequest.of(effectivePage, effectiveSize, Sort.by(direction, effectiveSortBy));
-        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim();
+        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim().toLowerCase();
+        String searchPattern = normalizedSearch == null ? null : "%" + normalizedSearch + "%";
 
         Page<User> usersPage = userRepository.findManagedUsers(
                 currentUser.getInstitution().getId(),
                 roleFilter,
-                normalizedSearch,
+                searchPattern,
                 User.UserRole.INSTITUTION_ADMIN,
                 pageable);
 

@@ -33,16 +33,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               AND u.role <> :excludedRole
               AND (:role IS NULL OR u.role = :role)
               AND (
-              :search IS NULL
-              OR LOWER(COALESCE(u.firstName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(COALESCE(u.lastName, '')) LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(COALESCE(u.email, '')) LIKE LOWER(CONCAT('%', :search, '%'))
+            :searchPattern IS NULL
+            OR LOWER(COALESCE(u.firstName, '')) LIKE :searchPattern
+            OR LOWER(COALESCE(u.lastName, '')) LIKE :searchPattern
+            OR LOWER(COALESCE(u.email, '')) LIKE :searchPattern
               )
             """)
     Page<User> findManagedUsers(
             @Param("institutionId") UUID institutionId,
             @Param("role") User.UserRole role,
-            @Param("search") String search,
+            @Param("searchPattern") String searchPattern,
             @Param("excludedRole") User.UserRole excludedRole,
             Pageable pageable);
 

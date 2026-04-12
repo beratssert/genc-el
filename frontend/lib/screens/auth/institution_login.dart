@@ -5,6 +5,7 @@ import 'package:tdp_frontend/repositories/auth_repo.dart';
 import 'package:tdp_frontend/screens/auth/user_login.dart';
 import 'package:tdp_frontend/screens/institution/admin_screen.dart';
 import 'package:tdp_frontend/services/storage_service.dart';
+import 'package:tdp_frontend/services/web_socket_service.dart';
 
 class InstituionLogin extends ConsumerStatefulWidget {
   const InstituionLogin({super.key});
@@ -58,6 +59,19 @@ class _InstituionLoginState extends ConsumerState<InstituionLogin> {
       if (response['role'] != null) {
         await storageService.saveRole(response['role'].toString());
       }
+
+      if (response['userId'] != null) {
+        await storageService.saveUserId(response['userId'].toString());
+      }
+
+      if (response['institutionId'] != null) {
+        await storageService.saveInstitutionId(
+          response['institutionId'].toString(),
+        );
+      }
+
+      // Connect Realtime Services
+      ref.read(webSocketServiceProvider).connect();
 
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();

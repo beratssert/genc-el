@@ -20,8 +20,7 @@ class OrderSummaryScreen extends ConsumerStatefulWidget {
   final VoidCallback onCartChanged;
 
   @override
-  ConsumerState<OrderSummaryScreen> createState() =>
-      _OrderSummaryScreenState();
+  ConsumerState<OrderSummaryScreen> createState() => _OrderSummaryScreenState();
 }
 
 class _OrderSummaryScreenState extends ConsumerState<OrderSummaryScreen> {
@@ -88,8 +87,9 @@ class _OrderSummaryScreenState extends ConsumerState<OrderSummaryScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                const Text('🎉 Siparişiniz oluşturuldu! Öğrenci aranıyor…'),
+            content: const Text(
+              '🎉 Siparişiniz oluşturuldu! Öğrenci aranıyor…',
+            ),
             backgroundColor: const Color(0xFF16A34A),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -104,7 +104,9 @@ class _OrderSummaryScreenState extends ConsumerState<OrderSummaryScreen> {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Hata: ${e.toString().replaceAll("Exception: ", "")}'),
+            content: Text(
+              'Hata: ${e.toString().replaceAll("Exception: ", "")}',
+            ),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
           ),

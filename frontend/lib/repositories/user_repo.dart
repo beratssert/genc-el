@@ -19,6 +19,9 @@ abstract class UserRepo {
 
   /// Deactivates the current user's account.
   Future<void> deactivateMyAccount();
+
+  /// Updates current user's location (lat, lon).
+  Future<void> updateLocation(double lat, double lon);
 }
 
 /// Concrete implementation of [UserRepo] connected to backend.
@@ -42,5 +45,13 @@ class UserRepoImpl implements UserRepo {
   @override
   Future<void> deactivateMyAccount() async {
     await _apiService.delete(ApiUrl.myProfile);
+  }
+
+  @override
+  Future<void> updateLocation(double lat, double lon) async {
+    await _apiService.put(
+      ApiUrl.myLocation,
+      data: {'latitude': lat, 'longitude': lon},
+    );
   }
 }

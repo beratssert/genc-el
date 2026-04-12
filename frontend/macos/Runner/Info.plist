@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+    <key>NSLocationUsageDescription</key>
+    <string>Öğrencilerin yakındaki görevleri görebilmesi için konum bilgisi gereklidir.</string>
 </dict>
 </plist>

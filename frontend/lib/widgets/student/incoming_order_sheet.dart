@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../core/models/task_model.dart';
 
 // ---------------------------------------------------------------------------
 // Gelen sipariş için hafif model (gerçek API'den gelecek)
@@ -15,10 +14,10 @@ class IncomingOrder {
     this.estimatedMinutes = 15,
   });
 
-  final int id;
+  final String id;
   final String elderlyName;
   final double distanceKm;
-  final List<ShoppingItem> shoppingList;
+  final List<String> shoppingList;
   final String? note;
 
   /// Tahmini alışveriş süresi (dakika)
@@ -363,19 +362,11 @@ class _OrderInfoCard extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        item.name,
+                        item,
                         style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF374151),
                         ),
-                      ),
-                    ),
-                    Text(
-                      '${item.qty} ${item.unit}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF6B7280),
                       ),
                     ),
                   ],

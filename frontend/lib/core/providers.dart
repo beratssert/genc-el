@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/models/dashboard_stats.dart';
 import 'package:tdp_frontend/models/task.dart';
 import 'package:tdp_frontend/models/user.dart';
+import 'package:tdp_frontend/models/user_page_response.dart';
 import 'package:tdp_frontend/repositories/institution_repo.dart';
 import 'package:tdp_frontend/repositories/task_repo.dart';
 import 'package:tdp_frontend/repositories/user_repo.dart';
@@ -39,7 +40,7 @@ final myTasksProvider = FutureProvider.autoDispose<List<Task>>((ref) async {
 /// ─── Institution Users ──────────────────────────────────
 /// Role filtresi ile kullanıcıları listeler.
 final institutionUsersProvider =
-    FutureProvider.autoDispose.family<List<User>, String?>((ref, role) async {
+    FutureProvider.autoDispose.family<UserPageResponse, String?>((ref, role) async {
   final institutionRepo = ref.read(institutionRepoProvider);
   return institutionRepo.getUsers(role: role);
 });

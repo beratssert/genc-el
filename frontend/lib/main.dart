@@ -5,7 +5,9 @@ import 'package:tdp_frontend/screens/auth/login_screen.dart';
 import 'package:tdp_frontend/screens/elderly/elderly_home_screen.dart';
 import 'package:tdp_frontend/screens/institution/institution_dashboard_screen.dart';
 import 'package:tdp_frontend/screens/student/student_home_screen.dart';
+import 'package:tdp_frontend/services/location_service.dart';
 import 'package:tdp_frontend/services/storage_service.dart';
+import 'package:tdp_frontend/services/web_socket_service.dart';
 import 'package:tdp_frontend/shared/theme.dart';
 
 void main() {
@@ -30,6 +32,14 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authInitAsync = ref.watch(authInitProvider);
+
+    // Initialize Realtime services if authenticated
+    authInitAsync.whenData((roleString) {
+      if (roleString != null) {
+        ref.read(webSocketServiceProvider).connect();
+        ref.read(locationServiceProvider).startTrackingIfStudent();
+      }
+    });
 
     return MaterialApp(
       title: 'Genç El',

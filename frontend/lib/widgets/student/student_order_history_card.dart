@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/models/task_model.dart';
+import '../../models/task.dart';
+import '../../core/utils/string_extensions.dart';
 
 /// Öğrenci geçmiş siparişler listesinde tek bir görev (sipariş) kartı.
 /// Mavi tema kullanılarak yaşlı ekranındaki yapıyla birebir aynı işlevsellik sunar.
@@ -10,7 +11,7 @@ class StudentOrderHistoryCard extends StatelessWidget {
     required this.index,
   });
 
-  final TaskModel task;
+  final Task task;
   final int index;
 
   @override
@@ -60,9 +61,7 @@ class StudentOrderHistoryCard extends StatelessWidget {
   }
 
   bool get _hasFinancialData =>
-      task.shoppingCost != null ||
-      task.totalAmountGiven != null ||
-      task.changeAmount != null;
+      task.totalAmountGiven != null || task.changeAmount != null;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,19 +101,24 @@ class _OrderIndexBadge extends StatelessWidget {
 class _OrderTitle extends StatelessWidget {
   const _OrderTitle({required this.task});
 
-  final TaskModel task;
+  final Task task;
 
-  String _formatDate(DateTime dt) =>
-      '${dt.day.toString().padLeft(2, '0')}.'
-      '${dt.month.toString().padLeft(2, '0')}.'
-      '${dt.year}';
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '--.--.----';
+    return '${dt.day.toString().padLeft(2, '0')}.'
+        '${dt.month.toString().padLeft(2, '0')}.'
+        '${dt.year}';
+  }
 
-  String _formatTime(DateTime dt) =>
-      '${dt.hour.toString().padLeft(2, '0')}:'
-      '${dt.minute.toString().padLeft(2, '0')}';
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '--:--';
+    return '${dt.hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final dt = task.createdAt;
     return Row(
       children: [
         const Icon(
@@ -124,7 +128,7 @@ class _OrderTitle extends StatelessWidget {
         ),
         const SizedBox(width: 5),
         Text(
-          _formatDate(task.createdAt),
+          _formatDate(dt),
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w700,
@@ -139,7 +143,7 @@ class _OrderTitle extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Text(
-          _formatTime(task.createdAt),
+          _formatTime(dt),
           style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
         ),
       ],
@@ -153,7 +157,7 @@ class _OrderTitle extends StatelessWidget {
 class _OrderMeta extends StatelessWidget {
   const _OrderMeta({required this.task, required this.statusColor});
 
-  final TaskModel task;
+  final Task task;
   final Color statusColor;
 
   @override
@@ -162,11 +166,10 @@ class _OrderMeta extends StatelessWidget {
       padding: const EdgeInsets.only(top: 6),
       child: Row(
         children: [
-          // Öğrenci yerine Yaşlı İkonu ve ismi
           const Icon(Icons.elderly_rounded, size: 14, color: Color(0xFF9CA3AF)),
           const SizedBox(width: 4),
           Text(
-            task.elderlyName ?? 'Bilinmeyen Yaşlı',
+            'Yaşlı #${task.requesterId?.safeSubstring(0, 5) ?? 'Bilinmeyen'}',
             style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
           ),
           const SizedBox(width: 10),
@@ -197,7 +200,7 @@ class _OrderMeta extends StatelessWidget {
 class _ShoppingItemList extends StatelessWidget {
   const _ShoppingItemList({required this.items});
 
-  final List<ShoppingItem> items;
+  final List<String> items;
 
   @override
   Widget build(BuildContext context) {
@@ -230,19 +233,11 @@ class _ShoppingItemList extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    item.name,
+                    item,
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF374151),
                     ),
-                  ),
-                ),
-                Text(
-                  '${item.qty} ${item.unit}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6B7280),
                   ),
                 ),
               ],
@@ -255,15 +250,17 @@ class _ShoppingItemList extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Finansal özet: Alışveriş Tutarı / Teslim Edilen / İade Alınan
+// Finansal özet
 // ---------------------------------------------------------------------------
 class _FinancialSummary extends StatelessWidget {
   const _FinancialSummary({required this.task});
 
-  final TaskModel task;
+  final Task task;
 
   @override
   Widget build(BuildContext context) {
+    final shoppingCost = (task.totalAmountGiven ?? 0) - (task.changeAmount ?? 0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -279,11 +276,11 @@ class _FinancialSummary extends StatelessWidget {
         const SizedBox(height: 10),
         Row(
           children: [
-            if (task.shoppingCost != null)
+            if (shoppingCost > 0)
               Expanded(
                 child: _FinancialCell(
                   label: 'Alışveriş\nTutarı',
-                  value: '${task.shoppingCost!.toStringAsFixed(0)} ₺',
+                  value: '${shoppingCost.toStringAsFixed(0)} ₺',
                   iconColor: const Color(0xFF6366F1), // indigo
                   icon: Icons.shopping_bag_outlined,
                 ),

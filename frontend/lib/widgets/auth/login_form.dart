@@ -6,6 +6,8 @@ import '../../screens/auth/institution_login_screen.dart';
 import '../../screens/elderly/elderly_home_screen.dart';
 import '../../screens/student/student_home_screen.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../services/web_socket_service.dart';
+import '../../services/location_service.dart';
 
 /// Kullanıcı tipini (ELDERLY / STUDENT) seçip
 /// e-posta ve şifre bilgileriyle giriş yapılan form.
@@ -57,6 +59,20 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       await storageService.saveToken(token);
       await storageService.saveRole(role);
       await storageService.saveEmail(responseEmail);
+      
+      // Also save IDs for WebSocket/Tracking
+      if (response['userId'] != null) {
+        await storageService.saveUserId(response['userId'].toString());
+      }
+      if (response['institutionId'] != null) {
+        await storageService.saveInstitutionId(
+          response['institutionId'].toString(),
+        );
+      }
+
+      // Connect Realtime Services
+      ref.read(webSocketServiceProvider).connect();
+      ref.read(locationServiceProvider).startTrackingIfStudent();
 
       if (!mounted) return;
 

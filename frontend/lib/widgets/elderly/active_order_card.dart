@@ -1,12 +1,26 @@
 import 'package:flutter/material.dart';
-import '../../core/models/task_model.dart';
+import '../../models/task.dart';
+import '../../core/utils/string_extensions.dart';
 
 /// Aktif sipariş varsa detaylarını, yoksa "sipariş yok" boş durumunu gösterir.
 class ActiveOrderCard extends StatelessWidget {
-  const ActiveOrderCard({super.key, this.activeTask});
+  const ActiveOrderCard({
+    super.key,
+    this.activeTask,
+    this.onConfirmStart,
+    this.onConfirmDelivery,
+    this.onCancel,
+    this.onUploadReceipt,
+  });
 
   /// null ise aktif sipariş yok demektir.
-  final TaskModel? activeTask;
+  final Task? activeTask;
+
+  /// Eylem geri çağırmaları
+  final VoidCallback? onConfirmStart;
+  final VoidCallback? onConfirmDelivery;
+  final VoidCallback? onCancel;
+  final VoidCallback? onUploadReceipt;
 
   @override
   Widget build(BuildContext context) {
@@ -15,21 +29,39 @@ class ActiveOrderCard extends StatelessWidget {
       children: [
         const _SectionTitle(title: 'Aktif Siparişim'),
         const SizedBox(height: 10),
-        activeTask != null
-            ? _ActiveTaskContent(task: activeTask!)
-            : const _EmptyOrderState(),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: activeTask != null
+              ? _ActiveTaskContent(
+                  key: ValueKey(activeTask!.id),
+                  task: activeTask!,
+                  onConfirmStart: onConfirmStart,
+                  onConfirmDelivery: onConfirmDelivery,
+                  onCancel: onCancel,
+                  onUploadReceipt: onUploadReceipt,
+                )
+              : const _EmptyOrderState(key: ValueKey('empty')),
+        ),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Aktif sipariş varken gösterilecek içerik
-// ---------------------------------------------------------------------------
 class _ActiveTaskContent extends StatelessWidget {
-  const _ActiveTaskContent({required this.task});
+  const _ActiveTaskContent({
+    super.key,
+    required this.task,
+    this.onConfirmStart,
+    this.onConfirmDelivery,
+    this.onCancel,
+    this.onUploadReceipt,
+  });
 
-  final TaskModel task;
+  final Task task;
+  final VoidCallback? onConfirmStart;
+  final VoidCallback? onConfirmDelivery;
+  final VoidCallback? onCancel;
+  final VoidCallback? onUploadReceipt;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +113,14 @@ class _ActiveTaskContent extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
+                const Spacer(),
+                Text(
+                  '#${task.id.safeSubstring(0, 8)}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                ),
               ],
             ),
           ),
@@ -90,12 +130,12 @@ class _ActiveTaskContent extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- Öğrenci bilgisi (varsa) ---
-                if (task.volunteerName != null) ...[
+                // --- Öğrenci ID bilgisi (varsa) ---
+                if (task.volunteerId != null) ...[
                   _InfoRow(
                     icon: Icons.school_outlined,
-                    label: 'Öğrenci',
-                    value: task.volunteerName!,
+                    label: 'Öğrenci No',
+                    value: task.volunteerId!.safeSubstring(0, 8),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -109,7 +149,7 @@ class _ActiveTaskContent extends StatelessWidget {
                     color: Color(0xFF374151),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 ...task.shoppingList.map(
                   (item) => Padding(
                     padding: const EdgeInsets.only(bottom: 4),
@@ -117,12 +157,41 @@ class _ActiveTaskContent extends StatelessWidget {
                   ),
                 ),
 
-                // --- Para bilgisi: sadece para teslim EDİLMİŞ durumlarda göster ---
-                if (task.totalAmountGiven != null &&
-                    (task.status == TaskStatus.shopping ||
-                        task.status == TaskStatus.atHomeFinal ||
-                        task.status == TaskStatus.completed)) ...[
-                  const Divider(height: 20),
+                // --- Not (varsa) ---
+                if (task.note != null && task.note!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFEF3C7)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.sticky_note_2_outlined,
+                          size: 16,
+                          color: Color(0xFFF59E0B),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            task.note!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF92400E),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // --- Para bilgisi ---
+                if (task.totalAmountGiven != null) ...[
+                  const Divider(height: 24),
                   _InfoRow(
                     icon: Icons.payments_outlined,
                     label: 'Verilen Para',
@@ -130,15 +199,9 @@ class _ActiveTaskContent extends StatelessWidget {
                   ),
                 ],
 
-                // --- Not (varsa) ---
-                if (task.note != null && task.note!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    icon: Icons.sticky_note_2_outlined,
-                    label: 'Not',
-                    value: task.note!,
-                  ),
-                ],
+                // --- Eylem Butonları ---
+                const SizedBox(height: 16),
+                _buildActions(context),
               ],
             ),
           ),
@@ -146,31 +209,113 @@ class _ActiveTaskContent extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildActions(BuildContext context) {
+    // 1. Başlangıcı Onayla (ASSIGNED durumunda)
+    if (task.status == TaskStatus.ASSIGNED && onConfirmStart != null) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: onConfirmStart,
+          icon: const Icon(Icons.thumb_up_alt_outlined, size: 20),
+          label: const Text('Başlangıcı Onayla (Öğrenci Geldi)'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFF59E0B),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            elevation: 0,
+          ),
+        ),
+      );
+    }
+
+    // 2. Teslimatı Onayla & Fiş Yükle (DELIVERED durumunda)
+    if (task.status == TaskStatus.DELIVERED) {
+      return Row(
+        children: [
+          if (onUploadReceipt != null)
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onUploadReceipt,
+                icon: const Icon(Icons.camera_alt_outlined, size: 20),
+                label: const Text('Fiş Yükle'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          if (onConfirmDelivery != null) ...[
+            if (onUploadReceipt != null) const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: onConfirmDelivery,
+                icon: const Icon(Icons.check_circle_outline, size: 20),
+                label: const Text('Teslimatı Onayla'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF16A34A),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
+    // 3. İptal Et (Sadece PENDING aşamasında)
+    if (task.status == TaskStatus.PENDING && onCancel != null) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: onCancel,
+          icon: const Icon(Icons.cancel_outlined, size: 20),
+          label: const Text('Siparişi İptal Et'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.red.shade600,
+            side: BorderSide(color: Colors.red.shade200),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
 }
 
 class _ShoppingItemRow extends StatelessWidget {
   const _ShoppingItemRow({required this.item});
 
-  final ShoppingItem item;
+  final String item;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.circle, size: 6, color: Color(0xFF9CA3AF)),
-        const SizedBox(width: 8),
+        const Icon(
+          Icons.check_circle_outline,
+          size: 16,
+          color: Color(0xFF16A34A),
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
-            item.name,
+            item,
             style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
-          ),
-        ),
-        Text(
-          '${item.qty} ${item.unit}',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF6B7280),
           ),
         ),
       ],
@@ -205,7 +350,7 @@ class _InfoRow extends StatelessWidget {
             value,
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF111827),
             ),
           ),
@@ -215,19 +360,16 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Aktif sipariş yokken gösterilecek boş durum
-// ---------------------------------------------------------------------------
 class _EmptyOrderState extends StatelessWidget {
-  const _EmptyOrderState();
+  const _EmptyOrderState({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB), // gray-50
+        color: Colors.white.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: const Color(0xFFE5E7EB),
@@ -238,21 +380,21 @@ class _EmptyOrderState extends StatelessWidget {
         children: [
           Icon(
             Icons.shopping_basket_outlined,
-            size: 40,
-            color: Color(0xFFD1D5DB), // gray-300
+            size: 48,
+            color: Color(0xFFD1D5DB),
           ),
-          SizedBox(height: 10),
+          SizedBox(height: 12),
           Text(
             'Aktif siparişiniz bulunmuyor',
             style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF6B7280),
             ),
           ),
           SizedBox(height: 4),
           Text(
-            'Yeni bir alışveriş oluşturabilirsiniz.',
+            'Yeni bir alışveriş oluşturarak başlayın.',
             style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
           ),
         ],
@@ -261,9 +403,6 @@ class _EmptyOrderState extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Yeniden kullanılabilir bölüm başlığı
-// ---------------------------------------------------------------------------
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
 

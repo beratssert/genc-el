@@ -107,11 +107,15 @@ class ApiService {
   }
 
   /// Handles file uploads (e.g. receipt images for tasks).
-  Future<dynamic> uploadFile(String endpoint, String filePath) async {
+  Future<dynamic> uploadFile(
+    String endpoint,
+    String filePath, {
+    String key = 'file',
+  }) async {
     try {
       final fileName = filePath.split('/').last;
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+        key: await MultipartFile.fromFile(filePath, filename: fileName),
       });
 
       final response = await dio.post(

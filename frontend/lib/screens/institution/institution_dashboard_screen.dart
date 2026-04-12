@@ -23,8 +23,7 @@ class _InstitutionDashboardScreenState
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-          builder: (_) => LoginScreen(selectedType: 'elderly')),
+      MaterialPageRoute(builder: (_) => LoginScreen(selectedType: 'elderly')),
       (route) => false,
     );
   }
@@ -62,7 +61,7 @@ class _InstitutionDashboardScreenState
                     'Yükleniyor…',
                     style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
                   ),
-                  error: (_, __) => const Text(
+                  error: (_, _) => const Text(
                     'Kurum Yöneticisi',
                     style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
                   ),
@@ -141,12 +140,21 @@ class _InstitutionDashboardScreenState
                               mainAxisSpacing: 16,
                               childAspectRatio: 1.5,
                               children: [
-                                _buildStatCard('…', 'Yaşlı/Engelli',
-                                    const Color(0xFF4F46E5)),
-                                _buildStatCard('…', 'Öğrenci',
-                                    const Color(0xFF9333EA)),
-                                _buildStatCard('…', 'Bu Ay Tamamlanan',
-                                    const Color(0xFF2563EB)),
+                                _buildStatCard(
+                                  '…',
+                                  'Yaşlı/Engelli',
+                                  const Color(0xFF4F46E5),
+                                ),
+                                _buildStatCard(
+                                  '…',
+                                  'Öğrenci',
+                                  const Color(0xFF9333EA),
+                                ),
+                                _buildStatCard(
+                                  '…',
+                                  'Bu Ay Tamamlanan',
+                                  const Color(0xFF2563EB),
+                                ),
                               ],
                             ),
                             error: (e, _) => Padding(
@@ -264,7 +272,7 @@ class _InstitutionDashboardScreenState
     final usersAsync = ref.watch(institutionUsersProvider(null));
     return usersAsync.when(
       data: (users) {
-        if (users.isEmpty) {
+        if (users.items.isEmpty) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(16),
@@ -275,7 +283,7 @@ class _InstitutionDashboardScreenState
             ),
           );
         }
-        final recent = users.take(3).toList();
+        final recent = users.items.take(3).toList();
         return Column(
           children: recent.asMap().entries.map((entry) {
             final user = entry.value;
@@ -299,9 +307,7 @@ class _InstitutionDashboardScreenState
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      user.role == Role.STUDENT
-                          ? Icons.school
-                          : Icons.person,
+                      user.role == Role.STUDENT ? Icons.school : Icons.person,
                       size: 20,
                       color: user.role == Role.STUDENT
                           ? const Color(0xFF2563EB)
@@ -344,8 +350,8 @@ class _InstitutionDashboardScreenState
       error: (e, _) => Padding(
         padding: const EdgeInsets.all(16),
         child: Text(
-          'Kullanıcılar yüklenemedi.',
-          style: TextStyle(color: Colors.red.shade600),
+          'Hata: $e',
+          style: TextStyle(color: Colors.red.shade600, fontSize: 13),
         ),
       ),
     );
@@ -372,10 +378,7 @@ class _InstitutionDashboardScreenState
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF4B5563),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
               textAlign: TextAlign.center,
             ),
           ],

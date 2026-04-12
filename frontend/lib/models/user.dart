@@ -62,10 +62,29 @@ class User {
       longitude: (json['longitude'] as num?)?.toDouble(),
       isActive: json['isActive'] ?? true,
       iban: json['iban'],
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'])
-          : null,
+      createdAt: _parseDateTime(json['createdAt']),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return DateTime.tryParse(value);
+    if (value is List && value.length >= 3) {
+      // Handle Spring Boot [year, month, day, ...] format
+      try {
+        return DateTime(
+          value[0] as int,
+          value[1] as int,
+          value[2] as int,
+          value.length > 3 ? value[3] as int : 0,
+          value.length > 4 ? value[4] as int : 0,
+          value.length > 5 ? (value[5] as num).toInt() : 0,
+        );
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {

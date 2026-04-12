@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:tdp_frontend/core/models/task_model.dart';
+import '../../models/task.dart';
 import '../../core/data/demo_products.dart';
 import '../../core/models/product_model.dart';
 import '../../widgets/order/product_card.dart';
@@ -55,7 +55,7 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   void _openSummary() async {
-    final result = await Navigator.of(context).push<TaskModel>(
+    final result = await Navigator.of(context).push<Task>(
       MaterialPageRoute(
         builder: (_) => OrderSummaryScreen(
           cart: widget.cart,

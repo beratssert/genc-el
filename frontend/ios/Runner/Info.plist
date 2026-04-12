@@ -66,5 +66,26 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+    
+    <!-- Location Permissions -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Öğrencilerin yakındaki görevleri görebilmesi ve yaşlıların yardım takibi yapabilmesi için konum bilgisi gereklidir.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Uygulama arka plandayken de konum takibi yaparak görev sürecini iyileştirmek için konum bilgisi gereklidir.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Konum bilgisi hem uygulama açıkken hem de arka planda görev takibi için gereklidir.</string>
+
+    <!-- Camera and Photo Library Permissions -->
+    <key>NSCameraUsageDescription</key>
+    <string>Alışveriş fişlerinin fotoğrafını çekmek için kameraya erişim gereklidir.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Galeriden fiş fotoğrafı seçebilmek için fotoğraf kütüphanesine erişim gereklidir.</string>
+
+    <!-- App Transport Security for HTTP connections -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
 </dict>
 </plist>

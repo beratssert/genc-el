@@ -5,7 +5,9 @@ import 'package:tdp_frontend/repositories/auth_repo.dart';
 import 'package:tdp_frontend/screens/auth/institution_login.dart';
 import 'package:tdp_frontend/screens/elderly/elderly_home_screen.dart';
 import 'package:tdp_frontend/screens/student/student_screen.dart';
+import 'package:tdp_frontend/services/location_service.dart';
 import 'package:tdp_frontend/services/storage_service.dart';
+import 'package:tdp_frontend/services/web_socket_service.dart';
 
 class UserLogin extends ConsumerStatefulWidget {
   const UserLogin({super.key});
@@ -59,6 +61,20 @@ class _UserLoginState extends ConsumerState<UserLogin> {
       if (response['role'] != null) {
         await storageService.saveRole(response['role'].toString());
       }
+
+      if (response['userId'] != null) {
+        await storageService.saveUserId(response['userId'].toString());
+      }
+
+      if (response['institutionId'] != null) {
+        await storageService.saveInstitutionId(
+          response['institutionId'].toString(),
+        );
+      }
+
+      // Connect Realtime Services
+      ref.read(webSocketServiceProvider).connect();
+      ref.read(locationServiceProvider).startTrackingIfStudent();
 
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();

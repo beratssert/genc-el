@@ -20,6 +20,7 @@ class StorageService {
   static const String _userEmailKey = 'user_email';
   static const String _userFirstNameKey = 'user_first_name';
   static const String _userLastNameKey = 'user_last_name';
+  static const String _institutionIdKey = 'institution_id';
 
   /// Initializes the [SharedPreferences] instance.
   Future<void> init() async {
@@ -86,6 +87,20 @@ class StorageService {
   Future<String?> getUserLastName() async {
     await _ensureInitialized();
     return _prefs?.getString(_userLastNameKey);
+  }
+
+  Future<void> saveInstitutionId(String? institutionId) async {
+    await _ensureInitialized();
+    if (institutionId == null) {
+      await _prefs?.remove(_institutionIdKey);
+    } else {
+      await _prefs?.setString(_institutionIdKey, institutionId);
+    }
+  }
+
+  Future<String?> getInstitutionId() async {
+    await _ensureInitialized();
+    return _prefs?.getString(_institutionIdKey);
   }
 
   Future<String> getUserFullName() async {

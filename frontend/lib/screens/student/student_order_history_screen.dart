@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../core/models/task_model.dart';
+import '../../models/task.dart';
 import '../../widgets/student/student_order_history_card.dart';
 
 /// Öğrenci kullanıcısının tamamlanmış/iptal siparişlerini listeleyen sayfa.
-///
-/// Özellikler:
-/// - Yaşlı ekranındaki düzenin aynısı (öğrenci için mavi tema uyarlaması)
-/// - Üstte toplam sipariş sayısı özet kutusu (mavi)
-/// - Siparişler yeniden eskiye göre (createdAt) sıralanır
-/// - Her kart dokunulduğunda ürün listesini açar (ExpansionTile)
-/// - Liste boşsa özel boş durum ekranı gösterilir
 class StudentOrderHistoryScreen extends StatelessWidget {
   const StudentOrderHistoryScreen({super.key, required this.completedTasks});
 
-  final List<TaskModel> completedTasks;
+  final List<Task> completedTasks;
 
   /// Siparişleri en yeniden en eskiye sıralar.
-  List<TaskModel> get _sortedTasks {
-    final sorted = List<TaskModel>.from(completedTasks);
-    sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  List<Task> get _sortedTasks {
+    final sorted = List<Task>.from(completedTasks);
+    sorted.sort((a, b) {
+      final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bDate.compareTo(aDate);
+    });
     return sorted;
   }
 
@@ -42,9 +39,7 @@ class StudentOrderHistoryScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- AppBar ---
               const _HistoryAppBar(),
-
               Expanded(
                 child: sorted.isEmpty
                     ? const _EmptyHistoryState()
@@ -58,9 +53,6 @@ class StudentOrderHistoryScreen extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Özel AppBar
-// ---------------------------------------------------------------------------
 class _HistoryAppBar extends StatelessWidget {
   const _HistoryAppBar();
 
@@ -89,19 +81,16 @@ class _HistoryAppBar extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Sipariş listesi: özet kutusu + kartlar
-// ---------------------------------------------------------------------------
 class _HistoryList extends StatelessWidget {
   const _HistoryList({required this.tasks});
 
-  final List<TaskModel> tasks;
+  final List<Task> tasks;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      itemCount: tasks.length + 1, // +1 → özet kutusu
+      itemCount: tasks.length + 1,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         if (index == 0) {
@@ -110,16 +99,13 @@ class _HistoryList extends StatelessWidget {
         final task = tasks[index - 1];
         return StudentOrderHistoryCard(
           task: task,
-          index: tasks.length - (index - 1), // En yeni = en büyük numara
+          index: tasks.length - (index - 1),
         );
       },
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Toplam sipariş sayısı özet kutusu (Mavi Tema)
-// ---------------------------------------------------------------------------
 class _SummaryBanner extends StatelessWidget {
   const _SummaryBanner({required this.totalCount});
 
@@ -131,7 +117,7 @@ class _SummaryBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2563EB), // blue-600 (Öğrenci rengi)
+        color: const Color(0xFF2563EB),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -173,9 +159,6 @@ class _SummaryBanner extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Geçmiş yokken boş durum
-// ---------------------------------------------------------------------------
 class _EmptyHistoryState extends StatelessWidget {
   const _EmptyHistoryState();
 

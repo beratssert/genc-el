@@ -1,14 +1,29 @@
 import 'package:flutter/material.dart';
-import '../../core/models/task_model.dart';
+import '../../models/task.dart';
+import '../../core/utils/string_extensions.dart';
 
 /// Öğrenciye atanmış aktif görev kartı.
 /// Görev yoksa "Yeni görev bekleniyor" boş durumu gösterilir.
 class StudentTaskCard extends StatelessWidget {
-  const StudentTaskCard({super.key, this.activeTask, this.isAvailable = true});
+  const StudentTaskCard({
+    super.key,
+    this.activeTask,
+    this.isAvailable = true,
+    this.onStart,
+    this.onDeliver,
+    this.onCancel,
+    this.onReject,
+  });
 
   /// null → aktif görev yok.
-  final TaskModel? activeTask;
+  final Task? activeTask;
   final bool isAvailable;
+
+  /// Eylem geri çağırmaları
+  final VoidCallback? onStart;
+  final VoidCallback? onDeliver;
+  final VoidCallback? onCancel;
+  final VoidCallback? onReject;
 
   @override
   Widget build(BuildContext context) {
@@ -17,21 +32,39 @@ class StudentTaskCard extends StatelessWidget {
       children: [
         const _SectionTitle(title: 'Aktif Görevim'),
         const SizedBox(height: 10),
-        activeTask != null
-            ? _ActiveTaskContent(task: activeTask!)
-            : _NoTaskState(isAvailable: isAvailable),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: activeTask != null
+              ? _ActiveTaskContent(
+                  key: ValueKey(activeTask!.id),
+                  task: activeTask!,
+                  onStart: onStart,
+                  onDeliver: onDeliver,
+                  onCancel: onCancel,
+                  onReject: onReject,
+                )
+              : _NoTaskState(key: const ValueKey('empty'), isAvailable: isAvailable),
+        ),
       ],
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Aktif görev varken
-// ---------------------------------------------------------------------------
 class _ActiveTaskContent extends StatelessWidget {
-  const _ActiveTaskContent({required this.task});
+  const _ActiveTaskContent({
+    super.key,
+    required this.task,
+    this.onStart,
+    this.onDeliver,
+    this.onCancel,
+    this.onReject,
+  });
 
-  final TaskModel task;
+  final Task task;
+  final VoidCallback? onStart;
+  final VoidCallback? onDeliver;
+  final VoidCallback? onCancel;
+  final VoidCallback? onReject;
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +116,11 @@ class _ActiveTaskContent extends StatelessWidget {
                     fontSize: 13,
                   ),
                 ),
+                const Spacer(),
+                Text(
+                  '#${task.id.safeSubstring(0, 8)}',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                ),
               ],
             ),
           ),
@@ -96,7 +134,7 @@ class _ActiveTaskContent extends StatelessWidget {
                 _InfoRow(
                   icon: Icons.elderly_outlined,
                   label: 'Sipariş eden',
-                  value: task.volunteerName ?? 'İsimsiz',
+                  value: 'Yaşlı #${task.requesterId?.safeSubstring(0, 5) ?? 'ID Yok'}',
                 ),
                 const SizedBox(height: 8),
 
@@ -117,11 +155,8 @@ class _ActiveTaskContent extends StatelessWidget {
                   ),
                 ),
 
-                // Para (yalnızca teslim sonrası durumlarda)
-                if (task.totalAmountGiven != null &&
-                    (task.status == TaskStatus.shopping ||
-                        task.status == TaskStatus.atHomeFinal ||
-                        task.status == TaskStatus.completed)) ...[
+                // Para
+                if (task.totalAmountGiven != null) ...[
                   const Divider(height: 20),
                   _InfoRow(
                     icon: Icons.payments_outlined,
@@ -132,13 +167,39 @@ class _ActiveTaskContent extends StatelessWidget {
 
                 // Not (varsa)
                 if (task.note != null && task.note!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _InfoRow(
-                    icon: Icons.sticky_note_2_outlined,
-                    label: 'Not',
-                    value: task.note!,
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.sticky_note_2_outlined,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            task.note!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
+
+                // Eylem Butonları
+                const SizedBox(height: 16),
+                _buildActions(context),
               ],
             ),
           ),
@@ -146,13 +207,120 @@ class _ActiveTaskContent extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildActions(BuildContext context) {
+    final status = task.status;
+
+    // 1. Alışverişe Başla (ASSIGNED durumunda)
+    if (status == TaskStatus.ASSIGNED && onStart != null) {
+      return Column(
+        children: [
+          _largeButton(
+            'Alışverişe Başla',
+            Icons.play_arrow_rounded,
+            const Color(0xFF8B5CF6),
+            onStart!,
+          ),
+          if (onReject != null) ...[
+            const SizedBox(height: 8),
+            _outlineButton(
+              'Görevi Reddet',
+              Icons.close,
+              Colors.orange.shade700,
+              onReject!,
+            ),
+          ],
+        ],
+      );
+    }
+
+    // 2. Teslim Et (IN_PROGRESS durumunda)
+    if (status == TaskStatus.IN_PROGRESS && onDeliver != null) {
+      return _largeButton(
+        'Teslim Et',
+        Icons.local_shipping_outlined,
+        const Color(0xFF06B6D4),
+        onDeliver!,
+      );
+    }
+
+    // 3. Bekleme Durumu (DELIVERED durumunda)
+    if (status == TaskStatus.DELIVERED) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            '⌛ Yaşlı kullanıcının onayı bekleniyor...',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontStyle: FontStyle.italic,
+              color: Color(0xFF64748B),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 4. İptal Etme (Opsiyonel)
+    if (status != TaskStatus.DELIVERED &&
+        status != TaskStatus.COMPLETED &&
+        onCancel != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: _outlineButton(
+          'Görevi İptal Et',
+          Icons.cancel_outlined,
+          Colors.red.shade400,
+          onCancel!,
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _largeButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 20),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          elevation: 0,
+        ),
+      ),
+    );
+  }
+
+  Widget _outlineButton(String label, IconData icon, Color color, VoidCallback onTap) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          side: BorderSide(color: color.withValues(alpha: 0.4)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-// ---------------------------------------------------------------------------
-// Görev yokken
-// ---------------------------------------------------------------------------
 class _NoTaskState extends StatelessWidget {
-  const _NoTaskState({required this.isAvailable});
+  const _NoTaskState({super.key, required this.isAvailable});
 
   final bool isAvailable;
 
@@ -160,9 +328,9 @@ class _NoTaskState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFF),
+        color: Colors.white.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -173,15 +341,15 @@ class _NoTaskState extends StatelessWidget {
                 ? Icons.hourglass_top_rounded
                 : Icons.pause_circle_outline_rounded,
             size: 48,
-            color: const Color(0xFFD1D5DB),
+            color: const Color(0xFFCBD5E1),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             isAvailable ? 'Yeni görev bekleniyor…' : 'Müsaitlik kapalı',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
+              color: Color(0xFF475569),
             ),
           ),
           const SizedBox(height: 4),
@@ -190,7 +358,7 @@ class _NoTaskState extends StatelessWidget {
                 ? 'Yakındaki bir sipariş sizi bilgilendirecek.'
                 : 'Aktif olmak için yukarıdaki anahtarı açın.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF9CA3AF)),
+            style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
           ),
         ],
       ),
@@ -198,9 +366,6 @@ class _NoTaskState extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Yardımcı widget'lar
-// ---------------------------------------------------------------------------
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.title});
 
@@ -235,19 +400,19 @@ class _InfoRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF9CA3AF)),
+        Icon(icon, size: 16, color: const Color(0xFF94A3B8)),
         const SizedBox(width: 8),
         Text(
           '$label: ',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
         ),
         Expanded(
           child: Text(
             value,
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF111827),
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E293B),
             ),
           ),
         ),
@@ -259,26 +424,18 @@ class _InfoRow extends StatelessWidget {
 class _ShoppingItemRow extends StatelessWidget {
   const _ShoppingItemRow({required this.item});
 
-  final ShoppingItem item;
+  final String item;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.circle, size: 6, color: Color(0xFF9CA3AF)),
-        const SizedBox(width: 8),
+        const Icon(Icons.circle, size: 6, color: Color(0xFF94A3B8)),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
-            item.name,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF374151)),
-          ),
-        ),
-        Text(
-          '${item.qty} ${item.unit}',
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF6B7280),
+            item,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF334155)),
           ),
         ),
       ],

@@ -1,5 +1,5 @@
 import 'dart:async';
-import '../models/task_model.dart';
+import '../../models/task.dart';
 
 class MockUserRepository {
   static final MockUserRepository _instance = MockUserRepository._internal();
@@ -12,11 +12,11 @@ class MockUserRepository {
     {'name': 'Mehmet Demir', 'type': 'Yaşlı/Engelli', 'date': 'Dün'},
   ];
 
-  TaskModel? activeTask;
-  final _taskController = StreamController<TaskModel?>.broadcast();
-  Stream<TaskModel?> get taskStream => _taskController.stream;
+  Task? activeTask;
+  final _taskController = StreamController<Task?>.broadcast();
+  Stream<Task?> get taskStream => _taskController.stream;
 
-  void updateActiveTask(TaskModel? task) {
+  void updateActiveTask(Task? task) {
     activeTask = task;
     _taskController.add(task);
   }

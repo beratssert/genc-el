@@ -14,16 +14,24 @@ Bu projede kapsamlı otomatik testler CI/Docker pipeline'da çalıştırılır. 
 - `UserControllerIntegrationTest` – User login, create, list (JWT/auth simülasyonu ile)
 - `RepositoryIntegrationTest` – JPA entity’ler ve repository’ler (Institution, User, Task, TaskLog, BursaryHistory)
 
-### 3. Test Konfigürasyonu
+### 3. Redis Integration Testler (Service + Gerçek Redis)
+- `TaskAssignmentRedisServiceIntegrationTest` – Gerçek Redis container ile kuyruk/pending key davranışı
+- Testcontainers ile `redis:7-alpine` ayağa kaldırılır, `TaskAssignmentRedisService` uçtan uca doğrulanır
+
+### 4. Test Konfigürasyonu
 - **Profil:** `test`
 - **Veritabanı:** H2 in-memory (PostgreSQL uyumlu mod)
 - **Redis:** Test ortamında devre dışı (`RedisAutoConfiguration` exclude)
+- **Redis integration test:** `test` profili kullanılmaz; H2 + gerçek Redis Testcontainers ile çalışır
 
 ## Komutlar
 
 ```bash
 # Tüm testleri çalıştır
 cd backend && mvn test
+
+# Sadece Redis integration testini çalıştır
+cd backend && mvn -Dtest=TaskAssignmentRedisServiceIntegrationTest test
 
 # Test + paketleme (CI’da kullanılan)
 mvn clean verify
@@ -34,6 +42,7 @@ mvn clean verify
 ### GitHub Actions
 - Push/PR’da `main`, `master`, `develop` branch’lerinde otomatik çalışır
 - `mvn clean verify` ile testler koşar
+- Ayrı bir `redis-integration-test` job’u `TaskAssignmentRedisServiceIntegrationTest` için çalışır
 - main/master’da Docker image build edilir
 
 ### Docker Build

@@ -35,6 +35,7 @@ CREATE TABLE users (
     address TEXT,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
+    fcm_token VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
     iban VARCHAR(34),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

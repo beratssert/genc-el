@@ -305,4 +305,63 @@ class UserControllerIntegrationTest {
                                         .andExpect(jsonPath("$.fcmToken").value("device-token-123"));
                 }
         }
+
+        @Nested
+        @DisplayName("GET /api/v1/user/nearby-students")
+        class NearbyStudents {
+
+                @Test
+                @DisplayName("ELDERLY kullanıcı yakındaki öğrencileri görür")
+                void shouldListNearbyStudentsForElderly() throws Exception {
+                        User elderly = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.ELDERLY)
+                                        .email("elderly-nearby@test.com")
+                                        .passwordHash(passwordEncoder.encode("Elderly123!"))
+                                        .firstName("Elderly")
+                                        .lastName("Nearby")
+                                        .latitude(39.9334)
+                                        .longitude(32.8597)
+                                        .isActive(true)
+                                        .build());
+
+                        userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("nearby-student@test.com")
+                                        .passwordHash(passwordEncoder.encode("Student123!"))
+                                        .firstName("Near")
+                                        .lastName("Student")
+                                        .latitude(39.9340)
+                                        .longitude(32.8600)
+                                        .iban("TR00 0000 0000 0000 0000 0000 00")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/nearby-students")
+                                        .param("radiusKm", "2.0")
+                                        .with(user(elderly.getEmail()).roles("ELDERLY")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$").isArray())
+                                        .andExpect(jsonPath("$[?(@.email=='nearby-student@test.com')]").exists());
+                }
+
+                @Test
+                @DisplayName("STUDENT rolü endpoint'e erişemez")
+                void shouldDenyStudentRole() throws Exception {
+                        User student = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("student-no-access@test.com")
+                                        .passwordHash(passwordEncoder.encode("Student123!"))
+                                        .firstName("Student")
+                                        .lastName("NoAccess")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/nearby-students")
+                                        .with(user(student.getEmail()).roles("STUDENT")))
+                                        .andExpect(status().isForbidden());
+                }
+        }
 }

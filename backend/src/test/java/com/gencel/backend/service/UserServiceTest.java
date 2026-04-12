@@ -309,4 +309,77 @@ class UserServiceTest {
             verify(userRepository).delete(institutionAdmin);
         }
     }
+
+    @Nested
+    @DisplayName("getNearbyAvailableStudents")
+    class NearbyStudents {
+
+        @Test
+        @DisplayName("ELDERLY kullanıcı için yakındaki öğrencileri döner")
+        void shouldReturnNearbyStudentsForElderly() {
+            User elderly = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.ELDERLY)
+                    .email("elderly@test.com")
+                    .latitude(39.9334)
+                    .longitude(32.8597)
+                    .build();
+
+            User student = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .email("nearby.student@test.com")
+                    .firstName("Nearby")
+                    .lastName("Student")
+                    .build();
+
+            when(userRepository.findByEmail(elderly.getEmail())).thenReturn(Optional.of(elderly));
+            when(userRepository.findNearbyAvailableStudents(institution.getId(), elderly.getId(), elderly.getLatitude(),
+                    elderly.getLongitude(), 5.0)).thenReturn(List.of(student));
+
+            List<UserResponse> response = userService.getNearbyAvailableStudents(elderly.getEmail(), null, null, null);
+
+            assertThat(response).hasSize(1);
+            assertThat(response.get(0).getEmail()).isEqualTo("nearby.student@test.com");
+            verify(userRepository).findNearbyAvailableStudents(institution.getId(), elderly.getId(),
+                    elderly.getLatitude(),
+                    elderly.getLongitude(), 5.0);
+        }
+
+        @Test
+        @DisplayName("ELDERLY dışı kullanıcı için exception fırlatır")
+        void shouldThrowWhenUserIsNotElderly() {
+            User student = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .email("student@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(student.getEmail())).thenReturn(Optional.of(student));
+
+            assertThatThrownBy(() -> userService.getNearbyAvailableStudents(student.getEmail(), 39.9, 32.8, 5.0))
+                    .isInstanceOf(UnauthorizedActionException.class)
+                    .hasMessageContaining("Only ELDERLY users");
+        }
+
+        @Test
+        @DisplayName("radiusKm 0 veya negatifse exception fırlatır")
+        void shouldThrowWhenRadiusIsInvalid() {
+            User elderly = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.ELDERLY)
+                    .email("elderly2@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(elderly.getEmail())).thenReturn(Optional.of(elderly));
+
+            assertThatThrownBy(() -> userService.getNearbyAvailableStudents(elderly.getEmail(), 39.9, 32.8, 0.0))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("radiusKm");
+        }
+    }
 }

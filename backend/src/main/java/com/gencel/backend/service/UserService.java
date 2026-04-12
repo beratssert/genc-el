@@ -105,6 +105,40 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
+    public List<UserResponse> getNearbyAvailableStudents(String currentUserEmail, Double latitude, Double longitude,
+            Double radiusKm) {
+        User currentUser = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (currentUser.getRole() != User.UserRole.ELDERLY) {
+            throw new UnauthorizedActionException("Only ELDERLY users can discover nearby students");
+        }
+
+        if (currentUser.getInstitution() == null || currentUser.getInstitution().getId() == null) {
+            throw new IllegalArgumentException("User has no institution");
+        }
+
+        double effectiveRadius = radiusKm == null ? 5.0 : radiusKm;
+        if (effectiveRadius <= 0) {
+            throw new IllegalArgumentException("radiusKm must be greater than 0");
+        }
+
+        Double effectiveLat = latitude != null ? latitude : currentUser.getLatitude();
+        Double effectiveLon = longitude != null ? longitude : currentUser.getLongitude();
+
+        List<User> users = userRepository.findNearbyAvailableStudents(
+                currentUser.getInstitution().getId(),
+                currentUser.getId(),
+                effectiveLat,
+                effectiveLon,
+                effectiveRadius);
+
+        return users.stream()
+                .map(this::mapToUserResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public UserResponse getMyProfile(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));

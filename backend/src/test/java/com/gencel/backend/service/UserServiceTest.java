@@ -5,6 +5,8 @@ import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
+import com.gencel.backend.exception.UnauthorizedActionException;
+import com.gencel.backend.exception.UserNotFoundException;
 import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -129,7 +131,7 @@ class UserServiceTest {
             when(userRepository.findByEmail("unknown@test.com")).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> userService.createUser("unknown@test.com", createStudentRequest))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(UserNotFoundException.class)
                     .hasMessageContaining("User not found");
         }
 
@@ -140,7 +142,7 @@ class UserServiceTest {
             when(userRepository.findByEmail("admin@kurum.gov.tr")).thenReturn(Optional.of(institutionAdmin));
 
             assertThatThrownBy(() -> userService.createUser("admin@kurum.gov.tr", createStudentRequest))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(UnauthorizedActionException.class)
                     .hasMessageContaining("INSTITUTION_ADMIN");
         }
 
@@ -188,7 +190,8 @@ class UserServiceTest {
         void shouldListUsersForAdminInstitution() {
             User student = User.builder().id(UUID.randomUUID()).role(User.UserRole.STUDENT).build();
             when(userRepository.findByEmail("admin@kurum.gov.tr")).thenReturn(Optional.of(institutionAdmin));
-            when(userRepository.findByInstitutionIdOrderByCreatedAtDesc(institution.getId())).thenReturn(List.of(student));
+            when(userRepository.findByInstitutionIdOrderByCreatedAtDesc(institution.getId()))
+                    .thenReturn(List.of(student));
 
             List<UserResponse> result = userService.listUsersByInstitution("admin@kurum.gov.tr", null);
 
@@ -200,13 +203,15 @@ class UserServiceTest {
         @DisplayName("rol filtresi ile listeler")
         void shouldListUsersWithRoleFilter() {
             when(userRepository.findByEmail("admin@kurum.gov.tr")).thenReturn(Optional.of(institutionAdmin));
-            when(userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(eq(institution.getId()), eq(User.UserRole.STUDENT)))
+            when(userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(eq(institution.getId()),
+                    eq(User.UserRole.STUDENT)))
                     .thenReturn(List.of());
 
             List<UserResponse> result = userService.listUsersByInstitution("admin@kurum.gov.tr", User.UserRole.STUDENT);
 
             assertThat(result).isEmpty();
-            verify(userRepository).findByInstitutionIdAndRoleOrderByCreatedAtDesc(institution.getId(), User.UserRole.STUDENT);
+            verify(userRepository).findByInstitutionIdAndRoleOrderByCreatedAtDesc(institution.getId(),
+                    User.UserRole.STUDENT);
         }
     }
 
@@ -232,7 +237,7 @@ class UserServiceTest {
             when(userRepository.findByEmail("unknown@test.com")).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> userService.getMyProfile("unknown@test.com"))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(UserNotFoundException.class)
                     .hasMessageContaining("User not found");
         }
 

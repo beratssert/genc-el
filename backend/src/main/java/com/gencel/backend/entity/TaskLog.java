@@ -34,7 +34,7 @@ public class TaskLog {
     @JoinColumn(name = "user_id") // Optional: User who performed the action
     private User user;
 
-    @Column(columnDefinition = "TEXT")
+    @Lob
     private String details;
 
     @CreationTimestamp

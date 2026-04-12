@@ -3,6 +3,7 @@ package com.gencel.backend.service;
 import com.gencel.backend.dto.CreateInstitutionRequest;
 import com.gencel.backend.dto.InstitutionResponse;
 import com.gencel.backend.entity.Institution;
+import com.gencel.backend.exception.InstitutionNotFoundException;
 import com.gencel.backend.repository.InstitutionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -143,7 +144,7 @@ class InstitutionServiceTest {
             when(institutionRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> institutionService.getInstitutionById(nonExistentId))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InstitutionNotFoundException.class)
                     .hasMessageContaining("Institution not found");
         }
     }

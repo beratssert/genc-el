@@ -39,7 +39,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/user/login", "/api/v1/institution/login", "/api/v1/admin/login").permitAll()
+                        .requestMatchers("/api/v1/user/login", "/api/v1/institution/login", "/api/v1/admin/login")
+                        .permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         // Kurum yöneticisinin kendi kurumunu güncellemesi / silmesi
                         .requestMatchers(HttpMethod.PUT, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
@@ -49,11 +51,9 @@ public class SecurityConfig {
                         // Kurum yöneticisi işlemleri: yalnızca INSTITUTION_ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/v1/user").hasRole("INSTITUTION_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/user").hasRole("INSTITUTION_ADMIN")
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -65,9 +65,11 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("*")); // Update this in production to specific origins
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
-        configuration.setExposedHeaders(Arrays.asList("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
-        
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept",
+                "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+        configuration
+                .setExposedHeaders(Arrays.asList("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

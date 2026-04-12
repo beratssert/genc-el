@@ -3,68 +3,114 @@
 Tüm endpointler `/api/v1` ön ekiyle başlar.
 
 ## 1. Kimlik Doğrulama (Auth)
-- `POST /api/v1/auth/login`: Kullanıcı girişi (JWT döner).
-- `POST /api/v1/auth/refresh-token`: Token yenileme.
-- `POST /api/v1/auth/change-password`: Şifre değiştirme.
 
-## 2. Kullanıcı Yönetimi (User Management)
-*Genellikle Kurum Yöneticisi tarafından kullanılır.*
-- `POST /api/v1/users`: Yeni kullanıcı (Öğrenci/Yaşlı) ekle.
-- `GET /api/v1/users`: Kullanıcıları listele (Filtre: Role)
-- `GET /api/v1/users/{id}`: Kullanıcı detayı.
-- `PUT /api/v1/users/{id}`: Kullanıcı güncelle.
-- `DELETE /api/v1/users/{id}`: Kullanıcıyı pasife al (Soft delete).
-- `GET /api/v1/users/{id}/history`: Kullanıcının geçmiş görevleri.
+| Method | Endpoint | Açıklama | Yetki |
+|--------|----------|----------|-------|
+| `POST` | `/api/v1/user/login` | Öğrenci/yaşlı girişi. JWT döner. | Public |
+| `POST` | `/api/v1/institution/login` | Kurum yöneticisi girişi. JWT döner. | Public |
+| `POST` | `/api/v1/admin/login` | Sistem yöneticisi girişi. JWT döner. | Public |
+| `POST` | `/api/v1/auth/refresh-token` | Giriş yapmış kullanıcı için yeni JWT üretir. | Authenticated |
+| `POST` | `/api/v1/auth/change-password` | Mevcut şifre doğrulanarak yeni şifreye geçilir. | Authenticated |
 
-## 3. Görev Yönetimi (Task Operations)
-Projenin kalbi olan alışveriş akışı buradadır.
+## 2. Kurum Yönetimi (Institution Management)
 
-### Talep Oluşturma (Yaşlı/Engelli)
-- `POST /api/v1/tasks`: Yeni alışveriş isteği oluştur.
-    - **Body:** `{ "shopping_list": [...], "notes": "..." }`
+| Method | Endpoint | Açıklama | Yetki |
+|--------|----------|----------|-------|
+| `POST` | `/api/v1/institution` | Yeni kurum oluşturur. | SYSTEM_ADMIN |
+| `GET` | `/api/v1/institution` | Tüm kurumları listeler. | SYSTEM_ADMIN |
+| `GET` | `/api/v1/institution/{id}` | Kurum detayı getirir. | SYSTEM_ADMIN |
+| `GET` | `/api/v1/institution/me` | Kendi kurumunun detaylarını getirir. | INSTITUTION_ADMIN |
+| `PUT` | `/api/v1/institution/{id}` | Kurum bilgisini günceller. | SYSTEM_ADMIN |
+| `DELETE` | `/api/v1/institution/{id}` | Kurumu pasife alır. | SYSTEM_ADMIN |
+| `PUT` | `/api/v1/institution/me` | Kendi kurumunu günceller. | INSTITUTION_ADMIN |
+| `DELETE` | `/api/v1/institution/me` | Kendi kurumunu pasife alır. | INSTITUTION_ADMIN |
 
-### Eşleşme ve Listeleme (Öğrenci)
-- `GET /api/v1/tasks/nearby`: Konuma göre yakındaki `PENDING` görevleri listele.
-    - **Query Params:** `lat`, `lon`, `radius` (km).
-- `GET /api/v1/tasks/my-active-task`: Öğrencinin üzerindeki aktif görevi getir.
+## 3. Kullanıcı Yönetimi (User Management)
 
-### Görev Akışı (Durum Güncellemeleri)
-- `PUT /api/v1/tasks/{id}/accept`: Görevi kabul et (`ASSIGNED`).
-- `PUT /api/v1/tasks/{id}/start-shopping`: Eve vardı, parayı aldı, alışverişe başladı (`SHOPPING`).
-    - **Body:** `{ "received_amount": 100.0 }` (Teyit edilen para).
-- `PUT /api/v1/tasks/{id}/complete-shopping`: Alışveriş bitti, eve dönüyor (`AT_HOME_FINAL`).
-- `POST /api/v1/tasks/{id}/receipt`: Fiş fotoğrafı yükle.
-    - **Multipart File:** Fiş görseli.
-- `PUT /api/v1/tasks/{id}/complete`: Teslimat yapıldı, görev tamamlandı (`COMPLETED`).
-    - **Body:** `{ "change_amount": 10.0 }` (Para üstü).
+| Method | Endpoint | Açıklama | Yetki |
+|--------|----------|----------|-------|
+| `POST` | `/api/v1/user` | Kuruma bağlı STUDENT/ELDERLY oluşturur. | INSTITUTION_ADMIN |
+| `GET` | `/api/v1/user` | Kurumdaki kullanıcıları sayfalı (paged) listeler. | INSTITUTION_ADMIN |
+| `GET` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı detaylı getirir. | INSTITUTION_ADMIN |
+| `GET` | `/api/v1/user/{id}/history` | Kurumdaki bir kullanıcının görev geçmişini getirir. | INSTITUTION_ADMIN |
+| `PUT` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı günceller. | INSTITUTION_ADMIN |
+| `DELETE` | `/api/v1/user/{id}` | Kurumdaki bir kullanıcıyı soft-delete yapar. | INSTITUTION_ADMIN |
+| `GET` | `/api/v1/user/me` | Giriş yapan kullanıcının profilini döner. | Authenticated |
+| `PUT` | `/api/v1/user/me` | Giriş yapan kullanıcının profilini günceller. | Authenticated |
+| `PUT` | `/api/v1/user/me/location` | Giriş yapan kullanıcının canlı konumunu günceller. | Authenticated |
+| `PUT` | `/api/v1/user/me/device-token` | FCM cihaz tokenını kaydeder/günceller. | Authenticated |
+| `DELETE` | `/api/v1/user/me` | Hesabı soft-delete yapar. | Authenticated |
+| `GET` | `/api/v1/user/nearby-students` | Yaşlı kullanıcı için yakın müsait öğrencileri listeler. | ELDERLY |
 
-### Onay Mekanizması (Yaşlı/Engelli)
-- `PUT /api/v1/tasks/{id}/confirm-start`: Yaşlı, verdiği parayı ve öğrencinin geldiğini onaylar.
-- `PUT /api/v1/tasks/{id}/confirm-end`: Yaşlı, teslimatı ve para üstünü onaylar. Görev tamamen kapanır.
+### Query Parametreleri
+- `GET /api/v1/user`: `role` (opsiyonel, `STUDENT`/`ELDERLY`)
+- `GET /api/v1/user`: `page` (opsiyonel, default `0`)
+- `GET /api/v1/user`: `size` (opsiyonel, default `20`, max `100`)
+- `GET /api/v1/user`: `search` (opsiyonel, `firstName`/`lastName`/`email` içinde arar)
+- `GET /api/v1/user`: `sortBy` (opsiyonel: `createdAt`, `firstName`, `lastName`, `email`, `role`)
+- `GET /api/v1/user`: `sortDir` (opsiyonel: `asc`/`desc`, default `desc`)
+- `GET /api/v1/user/nearby-students`: `latitude`, `longitude`, `radiusKm` (hepsi opsiyonel)
 
-## 4. Kurum ve Burs Yönetimi (Institution & Bursary)
-- `GET /api/v1/institutions/my-stats`: Kurumun genel istatistikleri.
-- `GET /api/v1/bursaries`: Öğrenci hakediş listesi (Aylık/Yıllık filtreli).
-- `POST /api/v1/bursaries/calculate`: Belirli bir ay için burs hesaplamasını tetikle (Cron da yapabilir ama manuel de olsun).
-- `PUT /api/v1/bursaries/{id}/pay`: Ödeme yapıldı olarak işaretle.
+## 4. Görev Yönetimi (Task Operations)
 
-## Örnek JSON Modelleri
+| Method | Endpoint | Açıklama | Yetki |
+|--------|----------|----------|-------|
+| `POST` | `/api/v1/tasks` | Yeni alışveriş görevi oluşturur. | ELDERLY |
+| `GET` | `/api/v1/tasks/pending` | Bekleyen görevleri listeler. | Authenticated |
+| `GET` | `/api/v1/tasks/nearby` | Öğrenci için yakındaki PENDING görevleri listeler. | STUDENT |
+| `GET` | `/api/v1/tasks/my-tasks` | Kullanıcının kendi görevlerini listeler. | Authenticated |
+| `GET` | `/api/v1/tasks/my-active-task` | Öğrencinin aktif görevini döner (`ASSIGNED`/`IN_PROGRESS`). | STUDENT |
+| `PUT` | `/api/v1/tasks/{taskId}/assign` | Öğrenci görevi kabul eder. | STUDENT |
+| `PUT` | `/api/v1/tasks/{taskId}/reject` | Öğrenci görevi reddeder. | STUDENT |
+| `PUT` | `/api/v1/tasks/{taskId}/confirm-start` | Yaşlı kullanıcı başlangıcı onaylar. | ELDERLY |
+| `PUT` | `/api/v1/tasks/{taskId}/start` | Öğrenci alışverişe başlar. | STUDENT |
+| `PUT` | `/api/v1/tasks/{taskId}/deliver` | Öğrenci teslimatı bildirir. | STUDENT |
+| `PUT` | `/api/v1/tasks/{taskId}/confirm-end` | Yaşlı kullanıcı teslimatı onaylar. | ELDERLY |
+| `PUT` | `/api/v1/tasks/{taskId}/complete` | Yaşlı kullanıcı görevi tamamlar. | ELDERLY |
+| `PUT` | `/api/v1/tasks/{taskId}/cancel` | Görev iptal eder. | Requester or Volunteer |
+| `POST` | `/api/v1/tasks/{taskId}/receipt/upload` | Makbuz görseli yükler. | ELDERLY |
 
-### Görev Oluşturma (POST /api/v1/tasks)
-```json
-{
-  "shopping_list": [
-    { "item": "Ekmek", "qty": 2, "unit": "Adet" },
-    { "item": "Süt", "qty": 1, "unit": "Lt" }
-  ],
-  "note": "Zili çalmayın, kapıyı tıklatın."
-}
-```
+## 5. Dashboard ve Burs
 
-### Görev Tamamlama (PUT /api/v1/tasks/{id}/complete)
-```json
-{
-  "change_amount": 15.50,
-  "note": "Poşet parası dahil edildi."
-}
-```
+| Method | Endpoint | Açıklama | Yetki |
+|--------|----------|----------|-------|
+| `GET` | `/api/v1/dashboard/stats` | Dashboard istatistiklerini döner. | Authenticated |
+| `GET` | `/api/v1/bursaries/me` | Öğrencinin burs hareketlerini getirir. | STUDENT |
+| `GET` | `/api/v1/bursaries/institution` | Kuruma ait burs hareketlerini listeler. | INSTITUTION_ADMIN |
+| `POST` | `/api/v1/bursaries/calculate` | Burs hesaplamasını tetikler. | INSTITUTION_ADMIN |
+| `PUT` | `/api/v1/bursaries/{id}/pay` | Burs kaydını ödendi işaretler. | INSTITUTION_ADMIN |
+
+## 6. Realtime (WebSocket)
+
+### Bağlantı
+- STOMP endpoint: `/ws`
+
+### Topicler
+- `/topic/institutions/{institutionId}/tasks`
+- `/topic/users/{userId}/tasks`
+- `/topic/institutions/{institutionId}/locations`
+- `/topic/users/{userId}/locations`
+
+### Event Türleri
+- `TASK_CREATED`
+- `TASK_ASSIGNED`
+- `TASK_REASSIGNED`
+- `TASK_REJECTED`
+- `TASK_START_CONFIRMED`
+- `TASK_STARTED`
+- `TASK_DELIVERED`
+- `TASK_DELIVERY_CONFIRMED`
+- `TASK_COMPLETED`
+- `TASK_CANCELLED`
+- `TASK_RECEIPT_UPLOADED`
+
+### Location Event Payload (Özet)
+- `userId`
+- `institutionId`
+- `latitude`
+- `longitude`
+- `updatedAt`
+
+## 7. Hala Planlananlar
+
+- (şimdilik yok)

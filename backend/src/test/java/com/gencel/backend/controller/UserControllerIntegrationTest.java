@@ -2,11 +2,15 @@ package com.gencel.backend.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.LoginRequest;
+import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.entity.Institution;
+import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.repository.InstitutionRepository;
+import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,261 +36,541 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("UserController Integration")
 class UserControllerIntegrationTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        @Autowired
+        private ObjectMapper objectMapper;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    @Autowired
-    private InstitutionRepository institutionRepository;
+        @Autowired
+        private InstitutionRepository institutionRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+        @Autowired
+        private TaskRepository taskRepository;
 
-    private Institution institution;
-    private User institutionAdmin;
+        @Autowired
+        private PasswordEncoder passwordEncoder;
 
-    @BeforeEach
-    void setUp() {
-        institution = institutionRepository.save(Institution.builder()
-                .name("Test Kurumu")
-                .region("Ankara")
-                .isActive(true)
-                .build());
-        institutionAdmin = userRepository.save(User.builder()
-                .institution(institution)
-                .role(User.UserRole.INSTITUTION_ADMIN)
-                .email("admin-integration@test.com")
-                .passwordHash(passwordEncoder.encode("Admin123!"))
-                .firstName("Admin")
-                .lastName("Test")
-                .phoneNumber("0532 111 22 33")
-                .isActive(true)
-                .build());
-    }
+        private Institution institution;
+        private User institutionAdmin;
 
-    @Nested
-    @DisplayName("POST /api/v1/user/login")
-    class UserLogin {
-
-        @Test
-        @DisplayName("geçerli STUDENT ile JWT döner")
-        void shouldLoginStudent() throws Exception {
-            userRepository.save(User.builder()
-                    .institution(institution)
-                    .role(User.UserRole.STUDENT)
-                    .email("student-integration@test.com")
-                    .passwordHash(passwordEncoder.encode("Student123!"))
-                    .firstName("Ahmet")
-                    .lastName("Yılmaz")
-                    .phoneNumber("0532 999 88 77")
-                    .iban("TR00 0000 0000 0000 0000 0000 00")
-                    .isActive(true)
-                    .build());
-
-            LoginRequest request = LoginRequest.builder()
-                    .email("student-integration@test.com")
-                    .password("Student123!")
-                    .build();
-
-            mockMvc.perform(post("/api/v1/user/login")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.token").exists())
-                    .andExpect(jsonPath("$.email").value("student-integration@test.com"))
-                    .andExpect(jsonPath("$.role").value("STUDENT"));
-        }
-    }
-
-    @Nested
-    @DisplayName("POST /api/v1/user (Create - INSTITUTION_ADMIN)")
-    class CreateUser {
-
-        @Test
-        @DisplayName("INSTITUTION_ADMIN ile geçerli STUDENT oluşturur")
-        void shouldCreateStudentWhenAdminAuthenticated() throws Exception {
-            CreateUserRequest request = CreateUserRequest.builder()
-                    .role(User.UserRole.STUDENT)
-                    .firstName("Yeni")
-                    .lastName("Öğrenci")
-                    .email("yeni.ogrenci@test.com")
-                    .phoneNumber("0533 444 55 66")
-                    .password("YeniOgr123!")
-                    .iban("TR11 1111 1111 1111 1111 1111 11")
-                    .build();
-
-            mockMvc.perform(post("/api/v1/user")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id").exists())
-                    .andExpect(jsonPath("$.email").value("yeni.ogrenci@test.com"))
-                    .andExpect(jsonPath("$.role").value("STUDENT"))
-                    .andExpect(jsonPath("$.firstName").value("Yeni"))
-                    .andExpect(jsonPath("$.lastName").value("Öğrenci"));
+        @BeforeEach
+        void setUp() {
+                institution = institutionRepository.save(Institution.builder()
+                                .name("Test Kurumu")
+                                .region("Ankara")
+                                .isActive(true)
+                                .build());
+                institutionAdmin = userRepository.save(User.builder()
+                                .institution(institution)
+                                .role(User.UserRole.INSTITUTION_ADMIN)
+                                .email("admin-integration@test.com")
+                                .passwordHash(passwordEncoder.encode("Admin123!"))
+                                .firstName("Admin")
+                                .lastName("Test")
+                                .phoneNumber("0532 111 22 33")
+                                .isActive(true)
+                                .build());
         }
 
-        @Test
-        @DisplayName("INSTITUTION_ADMIN ile geçerli ELDERLY oluşturur")
-        void shouldCreateElderlyWhenAdminAuthenticated() throws Exception {
-            CreateUserRequest request = CreateUserRequest.builder()
-                    .role(User.UserRole.ELDERLY)
-                    .firstName("Yaşlı")
-                    .lastName("Birey")
-                    .email("yasli@test.com")
-                    .phoneNumber("0533 777 88 99")
-                    .password("Yasli123!")
-                    .build();
+        @Nested
+        @DisplayName("POST /api/v1/user/login")
+        class UserLogin {
 
-            mockMvc.perform(post("/api/v1/user")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.role").value("ELDERLY"));
+                @Test
+                @DisplayName("geçerli STUDENT ile JWT döner")
+                void shouldLoginStudent() throws Exception {
+                        userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("student-integration@test.com")
+                                        .passwordHash(passwordEncoder.encode("Student123!"))
+                                        .firstName("Ahmet")
+                                        .lastName("Yılmaz")
+                                        .phoneNumber("0532 999 88 77")
+                                        .iban("TR00 0000 0000 0000 0000 0000 00")
+                                        .isActive(true)
+                                        .build());
+
+                        LoginRequest request = LoginRequest.builder()
+                                        .email("student-integration@test.com")
+                                        .password("Student123!")
+                                        .build();
+
+                        mockMvc.perform(post("/api/v1/user/login")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.token").exists())
+                                        .andExpect(jsonPath("$.email").value("student-integration@test.com"))
+                                        .andExpect(jsonPath("$.role").value("STUDENT"));
+                }
         }
 
-        @Test
-        @DisplayName("yetkisiz (anonymous) ile 401/403")
-        void shouldRejectWhenUnauthorized() throws Exception {
-            CreateUserRequest request = CreateUserRequest.builder()
-                    .role(User.UserRole.STUDENT)
-                    .firstName("X")
-                    .lastName("Y")
-                    .email("x@y.com")
-                    .phoneNumber("0555")
-                    .password("Pass123!")
-                    .iban("TR00 0000 0000 0000 0000 0000 00")
-                    .build();
+        @Nested
+        @DisplayName("POST /api/v1/user (Create - INSTITUTION_ADMIN)")
+        class CreateUser {
 
-            mockMvc.perform(post("/api/v1/user")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isForbidden()); // 403 - yetkisiz (anonymous)
+                @Test
+                @DisplayName("INSTITUTION_ADMIN ile geçerli STUDENT oluşturur")
+                void shouldCreateStudentWhenAdminAuthenticated() throws Exception {
+                        CreateUserRequest request = CreateUserRequest.builder()
+                                        .role(User.UserRole.STUDENT)
+                                        .firstName("Yeni")
+                                        .lastName("Öğrenci")
+                                        .email("yeni.ogrenci@test.com")
+                                        .phoneNumber("0533 444 55 66")
+                                        .password("YeniOgr123!")
+                                        .iban("TR11 1111 1111 1111 1111 1111 11")
+                                        .build();
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isCreated())
+                                        .andExpect(jsonPath("$.id").exists())
+                                        .andExpect(jsonPath("$.email").value("yeni.ogrenci@test.com"))
+                                        .andExpect(jsonPath("$.role").value("STUDENT"))
+                                        .andExpect(jsonPath("$.firstName").value("Yeni"))
+                                        .andExpect(jsonPath("$.lastName").value("Öğrenci"));
+                }
+
+                @Test
+                @DisplayName("INSTITUTION_ADMIN ile geçerli ELDERLY oluşturur")
+                void shouldCreateElderlyWhenAdminAuthenticated() throws Exception {
+                        CreateUserRequest request = CreateUserRequest.builder()
+                                        .role(User.UserRole.ELDERLY)
+                                        .firstName("Yaşlı")
+                                        .lastName("Birey")
+                                        .email("yasli@test.com")
+                                        .phoneNumber("0533 777 88 99")
+                                        .password("Yasli123!")
+                                        .build();
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isCreated())
+                                        .andExpect(jsonPath("$.role").value("ELDERLY"));
+                }
+
+                @Test
+                @DisplayName("yetkisiz (anonymous) ile 401/403")
+                void shouldRejectWhenUnauthorized() throws Exception {
+                        CreateUserRequest request = CreateUserRequest.builder()
+                                        .role(User.UserRole.STUDENT)
+                                        .firstName("X")
+                                        .lastName("Y")
+                                        .email("x@y.com")
+                                        .phoneNumber("0555")
+                                        .password("Pass123!")
+                                        .iban("TR00 0000 0000 0000 0000 0000 00")
+                                        .build();
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isForbidden()); // 403 - yetkisiz (anonymous)
+                }
+
+                @Test
+                @DisplayName("validation hatası (şifre zayıf) ile 400")
+                void shouldReturn400WhenValidationFails() throws Exception {
+                        CreateUserRequest request = CreateUserRequest.builder()
+                                        .role(User.UserRole.STUDENT)
+                                        .firstName("X")
+                                        .lastName("Y")
+                                        .email("x@y.com")
+                                        .phoneNumber("0555")
+                                        .password("short") // 8 kar, büyük/küçük/rakam gerekli
+                                        .iban("TR00 0000 0000 0000 0000 0000 00")
+                                        .build();
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isBadRequest());
+                }
+
+                @Test
+                @DisplayName("son eklenen kullanıcı listede en üstte gelir")
+                void shouldReturnNewestUserFirstInList() throws Exception {
+                        CreateUserRequest firstUser = CreateUserRequest.builder()
+                                        .role(User.UserRole.STUDENT)
+                                        .firstName("Ilk")
+                                        .lastName("Kullanici")
+                                        .email("ilk.kullanici@test.com")
+                                        .phoneNumber("0533 111 11 11")
+                                        .password("IlkUser123!")
+                                        .iban("TR11 1111 1111 1111 1111 1111 11")
+                                        .build();
+
+                        CreateUserRequest secondUser = CreateUserRequest.builder()
+                                        .role(User.UserRole.ELDERLY)
+                                        .firstName("Son")
+                                        .lastName("Kullanici")
+                                        .email("son.kullanici@test.com")
+                                        .phoneNumber("0533 222 22 22")
+                                        .password("SonUser123!")
+                                        .build();
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(firstUser)))
+                                        .andExpect(status().isCreated());
+
+                        mockMvc.perform(post("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(secondUser)))
+                                        .andExpect(status().isCreated());
+
+                        mockMvc.perform(get("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.items[0].email").value("son.kullanici@test.com"));
+                }
         }
 
-        @Test
-        @DisplayName("validation hatası (şifre zayıf) ile 400")
-        void shouldReturn400WhenValidationFails() throws Exception {
-            CreateUserRequest request = CreateUserRequest.builder()
-                    .role(User.UserRole.STUDENT)
-                    .firstName("X")
-                    .lastName("Y")
-                    .email("x@y.com")
-                    .phoneNumber("0555")
-                    .password("short") // 8 kar, büyük/küçük/rakam gerekli
-                    .iban("TR00 0000 0000 0000 0000 0000 00")
-                    .build();
+        @Nested
+        @DisplayName("GET /api/v1/user (List)")
+        class ListUsers {
 
-            mockMvc.perform(post("/api/v1/user")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest());
-        }
-    }
+                @Test
+                @DisplayName("INSTITUTION_ADMIN kurumunun kullanıcılarını listeler")
+                void shouldListUsersForAdmin() throws Exception {
+                        userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("list.student@test.com")
+                                        .passwordHash("x")
+                                        .firstName("List")
+                                        .lastName("Student")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
 
-    @Nested
-    @DisplayName("GET /api/v1/user (List)")
-    class ListUsers {
+                        mockMvc.perform(get("/api/v1/user")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.items").isArray())
+                                        .andExpect(jsonPath("$.items[?(@.email=='list.student@test.com')]").exists());
+                }
 
-        @Test
-        @DisplayName("INSTITUTION_ADMIN kurumunun kullanıcılarını listeler")
-        void shouldListUsersForAdmin() throws Exception {
-            userRepository.save(User.builder()
-                    .institution(institution)
-                    .role(User.UserRole.STUDENT)
-                    .email("list.student@test.com")
-                    .passwordHash("x")
-                    .firstName("List")
-                    .lastName("Student")
-                    .phoneNumber("0555")
-                    .iban("TR00")
-                    .isActive(true)
-                    .build());
+                @Test
+                @DisplayName("rol filtresi ile listeler")
+                void shouldListWithRoleFilter() throws Exception {
+                        mockMvc.perform(get("/api/v1/user")
+                                        .param("role", "STUDENT")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.items").isArray());
+                }
 
-            mockMvc.perform(get("/api/v1/user")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").isArray())
-                    .andExpect(jsonPath("$[?(@.email=='list.student@test.com')]").exists());
-        }
+                @Test
+                @DisplayName("pagination/search/sort ile page response döner")
+                void shouldReturnPagedUsersWhenPagingParamsProvided() throws Exception {
+                        userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("ali.search@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Ali")
+                                        .lastName("Search")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
 
-        @Test
-        @DisplayName("rol filtresi ile listeler")
-        void shouldListWithRoleFilter() throws Exception {
-            mockMvc.perform(get("/api/v1/user")
-                            .param("role", "STUDENT")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$").isArray());
-        }
-    }
-
-    @Nested
-    @DisplayName("Profile endpoints /api/v1/user/me")
-    class ProfileEndpoints {
-
-        @Test
-        @DisplayName("GET /me giriş yapmış kullanıcı profilini döner")
-        void shouldGetMyProfile() throws Exception {
-            mockMvc.perform(get("/api/v1/user/me")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.email").value(institutionAdmin.getEmail()))
-                    .andExpect(jsonPath("$.role").value("INSTITUTION_ADMIN"));
+                        mockMvc.perform(get("/api/v1/user")
+                                        .param("page", "0")
+                                        .param("size", "10")
+                                        .param("search", "ali")
+                                        .param("sortBy", "createdAt")
+                                        .param("sortDir", "desc")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.items").isArray())
+                                        .andExpect(jsonPath("$.page").value(0))
+                                        .andExpect(jsonPath("$.size").value(10));
+                }
         }
 
-        @Test
-        @DisplayName("PUT /me profil alanlarını günceller")
-        void shouldUpdateMyProfile() throws Exception {
-            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
-                    .firstName("UpdatedName")
-                    .phoneNumber("0500 111 22 33")
-                    .build();
+        @Nested
+        @DisplayName("Managed user endpoints /api/v1/user/{id}")
+        class ManagedUserEndpoints {
 
-            mockMvc.perform(put("/api/v1/user/me")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.firstName").value("UpdatedName"))
-                    .andExpect(jsonPath("$.phoneNumber").value("0500 111 22 33"));
+                @Test
+                @DisplayName("GET /{id} kullanıcı detayını döner")
+                void shouldGetManagedUserById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("managed.get@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("Get")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/{id}", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.email").value("managed.get@test.com"));
+                }
+
+                @Test
+                @DisplayName("PUT /{id} kullanıcı profilini günceller")
+                void shouldUpdateManagedUserById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.ELDERLY)
+                                        .email("managed.put@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("Put")
+                                        .phoneNumber("0555")
+                                        .isActive(true)
+                                        .build());
+
+                        UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                                        .firstName("UpdatedManaged")
+                                        .phoneNumber("0500 999 88 77")
+                                        .build();
+
+                        mockMvc.perform(put("/api/v1/user/{id}", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.firstName").value("UpdatedManaged"))
+                                        .andExpect(jsonPath("$.phoneNumber").value("0500 999 88 77"));
+                }
+
+                @Test
+                @DisplayName("DELETE /{id} kullanıcıyı soft-delete eder")
+                void shouldDeleteManagedUserById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("managed.delete@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("Delete")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(delete("/api/v1/user/{id}", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isNoContent());
+
+                        org.assertj.core.api.Assertions.assertThat(userRepository.findById(target.getId())).isEmpty();
+                }
+
+                @Test
+                @DisplayName("GET /{id}/history kullanıcı görev geçmişini döner")
+                void shouldGetManagedUserHistoryById() throws Exception {
+                        User target = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.ELDERLY)
+                                        .email("managed.history@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Managed")
+                                        .lastName("History")
+                                        .phoneNumber("0555")
+                                        .isActive(true)
+                                        .build());
+
+                        User volunteer = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("managed.history.volunteer@test.com")
+                                        .passwordHash("x")
+                                        .firstName("Vol")
+                                        .lastName("User")
+                                        .phoneNumber("0555")
+                                        .iban("TR00")
+                                        .isActive(true)
+                                        .build());
+
+                        taskRepository.save(Task.builder()
+                                        .requester(target)
+                                        .volunteer(volunteer)
+                                        .status(Task.TaskStatus.COMPLETED)
+                                        .shoppingList(java.util.List.of("Ekmek"))
+                                        .note("Geçmiş test görevi")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/{id}/history", target.getId())
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$").isArray())
+                                        .andExpect(jsonPath("$[0].status").value("COMPLETED"));
+                }
         }
 
-        @Test
-        @DisplayName("PUT /me geçersiz email ile 400 döner")
-        void shouldReturnBadRequestOnInvalidEmail() throws Exception {
-            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
-                    .email("not-an-email")
-                    .build();
+        @Nested
+        @DisplayName("Profile endpoints /api/v1/user/me")
+        class ProfileEndpoints {
 
-            mockMvc.perform(put("/api/v1/user/me")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isBadRequest());
+                @Test
+                @DisplayName("GET /me giriş yapmış kullanıcı profilini döner")
+                void shouldGetMyProfile() throws Exception {
+                        mockMvc.perform(get("/api/v1/user/me")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.email").value(institutionAdmin.getEmail()))
+                                        .andExpect(jsonPath("$.role").value("INSTITUTION_ADMIN"));
+                }
+
+                @Test
+                @DisplayName("PUT /me profil alanlarını günceller")
+                void shouldUpdateMyProfile() throws Exception {
+                        UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                                        .firstName("UpdatedName")
+                                        .phoneNumber("0500 111 22 33")
+                                        .build();
+
+                        mockMvc.perform(put("/api/v1/user/me")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.firstName").value("UpdatedName"))
+                                        .andExpect(jsonPath("$.phoneNumber").value("0500 111 22 33"));
+                }
+
+                @Test
+                @DisplayName("PUT /me geçersiz email ile 400 döner")
+                void shouldReturnBadRequestOnInvalidEmail() throws Exception {
+                        UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                                        .email("not-an-email")
+                                        .build();
+
+                        mockMvc.perform(put("/api/v1/user/me")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isBadRequest());
+                }
+
+                @Test
+                @DisplayName("PUT /me/location canlı konum bilgisini günceller")
+                void shouldUpdateMyLocation() throws Exception {
+                        UpdateLocationRequest request = UpdateLocationRequest.builder()
+                                        .latitude(39.9334)
+                                        .longitude(32.8597)
+                                        .build();
+
+                        mockMvc.perform(put("/api/v1/user/me/location")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.latitude").value(39.9334))
+                                        .andExpect(jsonPath("$.longitude").value(32.8597));
+                }
+
+                @Test
+                @DisplayName("DELETE /me hesabı dondurur ve 204 döner")
+                void shouldDeactivateMyAccount() throws Exception {
+                        mockMvc.perform(delete("/api/v1/user/me")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
+                                        .andExpect(status().isNoContent());
+                }
+
+                @Test
+                @DisplayName("GET /me anonymous istek için 401 döner")
+                void shouldReturnUnauthorizedWhenAnonymous() throws Exception {
+                        mockMvc.perform(get("/api/v1/user/me"))
+                                        .andExpect(status().isForbidden());
+                }
+
+                @Test
+                @DisplayName("PUT /me/device-token token kaydeder")
+                void shouldUpdateDeviceToken() throws Exception {
+                        UpdateFcmTokenRequest request = UpdateFcmTokenRequest.builder()
+                                        .fcmToken("device-token-123")
+                                        .build();
+
+                        mockMvc.perform(put("/api/v1/user/me/device-token")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.fcmToken").value("device-token-123"));
+                }
         }
 
-        @Test
-        @DisplayName("DELETE /me hesabı dondurur ve 204 döner")
-        void shouldDeactivateMyAccount() throws Exception {
-            mockMvc.perform(delete("/api/v1/user/me")
-                            .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN")))
-                    .andExpect(status().isNoContent());
-        }
+        @Nested
+        @DisplayName("GET /api/v1/user/nearby-students")
+        class NearbyStudents {
 
-        @Test
-        @DisplayName("GET /me anonymous istek için 401 döner")
-        void shouldReturnUnauthorizedWhenAnonymous() throws Exception {
-            mockMvc.perform(get("/api/v1/user/me"))
-                    .andExpect(status().isForbidden());
+                @Test
+                @DisplayName("ELDERLY kullanıcı yakındaki öğrencileri görür")
+                void shouldListNearbyStudentsForElderly() throws Exception {
+                        User elderly = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.ELDERLY)
+                                        .email("elderly-nearby@test.com")
+                                        .passwordHash(passwordEncoder.encode("Elderly123!"))
+                                        .firstName("Elderly")
+                                        .lastName("Nearby")
+                                        .latitude(39.9334)
+                                        .longitude(32.8597)
+                                        .isActive(true)
+                                        .build());
+
+                        userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("nearby-student@test.com")
+                                        .passwordHash(passwordEncoder.encode("Student123!"))
+                                        .firstName("Near")
+                                        .lastName("Student")
+                                        .latitude(39.9340)
+                                        .longitude(32.8600)
+                                        .iban("TR00 0000 0000 0000 0000 0000 00")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/nearby-students")
+                                        .param("radiusKm", "2.0")
+                                        .with(user(elderly.getEmail()).roles("ELDERLY")))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$").isArray())
+                                        .andExpect(jsonPath("$[?(@.email=='nearby-student@test.com')]").exists());
+                }
+
+                @Test
+                @DisplayName("STUDENT rolü endpoint'e erişemez")
+                void shouldDenyStudentRole() throws Exception {
+                        User student = userRepository.save(User.builder()
+                                        .institution(institution)
+                                        .role(User.UserRole.STUDENT)
+                                        .email("student-no-access@test.com")
+                                        .passwordHash(passwordEncoder.encode("Student123!"))
+                                        .firstName("Student")
+                                        .lastName("NoAccess")
+                                        .isActive(true)
+                                        .build());
+
+                        mockMvc.perform(get("/api/v1/user/nearby-students")
+                                        .with(user(student.getEmail()).roles("STUDENT")))
+                                        .andExpect(status().isForbidden());
+                }
         }
-    }
 }

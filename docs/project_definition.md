@@ -10,8 +10,8 @@ Bu proje, evinden çıkamayan yaşlı veya engelli bireyler ile onlara alışver
 - **İşlevler:**
     - Alışveriş listesi oluşturma.
     - "Öğrenci Çağır" butonu ile talep oluşturma.
-    - Gelen öğrenciyi ve teslim edilen parayı onaylama.
-    - Alışveriş tamamlandığında teslimatı ve para üstünü onaylama.
+    - Alışveriş başlangıcı öncesi tutar onayı (`confirm-start`).
+    - Teslimat sonrası para üstü/makbuz onayı (`confirm-end`).
 
 ### 2. Öğrenci (Gönüllü / Hizmet Veren)
 - **Kayıt:** Kurum tarafından sisteme kaydedilir.
@@ -19,7 +19,7 @@ Bu proje, evinden çıkamayan yaşlı veya engelli bireyler ile onlara alışver
     - Gelen çağrı bildirimlerini görme (Konum ve Liste detayları).
     - Çağrıyı kabul etme veya reddetme.
     - Alışveriş sürecini yönetme (Başlangıç, Ödeme alma, Alışveriş yapma, Teslimat).
-    - Alışveriş fişini sisteme yükleme.
+    - Göreve ait aktif durumunu ve yakın görevleri görüntüleme.
     - Tamamlanan görev sayısına göre burs yönetimi (Kurum takibi).
 
 ### 3. Kurum (Yönetici)
@@ -31,28 +31,29 @@ Bu proje, evinden çıkamayan yaşlı veya engelli bireyler ile onlara alışver
 ## Temel İş Akışı (Senaryo)
 
 1. **Talep Oluşturma:** Yaşlı birey (Ayşe Teyze) uygulamaya girer, alışveriş listesini (Ekmek, Yumurta) yazar ve çağrı butonuna basar.
-2. **Eşleşme ve Bildirim:** Sistem, yakındaki uygun öğrencileri (Ahmet) belirler ve bildirim gönderir.
+2. **Eşleşme ve Bildirim:** Sistem, yakındaki uygun öğrencileri belirler; FCM + realtime event ile bilgilendirir.
     - *Zaman Aşımı / Red:* Ahmet reddederse veya süresi dolarsa (10dk), çağrı bir sonraki öğrenciye (Berat) düşer.
 3. **Görev Kabulü:** Berat çağrıyı kabul eder ve Ayşe Teyze'nin konumuna gider.
-4. **Alışveriş Öncesi Onay:** 
+4. **Alışveriş Öncesi Onay:**
     - Berat eve varır.
     - Ayşe Teyze sisteme verilen parayı (100 TL) ve listeyi son kez girer/onaylar.
     - Berat bu bilgileri sistemden onaylar ve parayı teslim alır.
 5. **Alışveriş Süreci:** Berat markete gider, ürünleri alır.
 6. **Teslimat ve Kapanış:**
     - Berat eve döner, ürünleri ve para üstünü (10 TL) teslim eder.
-    - Berat sisteme fiş fotoğrafını yükler, para üstü miktarını girer ve görevi "Tamamlandı" olarak işaretler.
+    - Yaşlı kullanıcı makbuz görselini yükler (`/api/v1/tasks/{id}/receipt/upload`).
+    - Yaşlı kullanıcı teslimatı onaylar (`confirm-end`).
     - Ayşe Teyze sistemden teslimatı ve para üstünü onaylar.
 7. **Puanlama/Kayıt:** İşlem başarıyla kapanır, Berat'ın hanesine +1 görev eklenir.
 
-## Teknik Gereksinimler (Ön Hazırlık)
-- **Mobil Uygulama:** Öğrenci ve Yaşlı bireyler için (Konum takibi, Bildirimler, Kamera erişimi).
+## Teknik Gereksinimler
+- **Mobil Uygulama:** Öğrenci ve yaşlı bireyler için (konum takibi, bildirim, kamera erişimi).
 - **Web Paneli:** Kurumlar için yönetim paneli.
-- **Backend:** Gerçek zamanlı bildirimler (WebSocket/Push Notification), Konum tabanlı sorgular (Geospatial queries), Dosya depolama (Fiş fotoğrafları).
+- **Backend:** Push bildirimi (FCM), realtime event yayınları (WebSocket/STOMP), konum tabanlı sorgular, makbuz dosya yükleme.
 
 ## Teknoloji Yığını (Tech Stack)
-- **Backend:** Spring Boot (Java) + Redis (Cache & Queue)
+- **Backend:** Spring Boot (Java) + Redis (Queue/TTL) + WebSocket/STOMP
 - **Frontend (Mobil):** Flutter (Dart)
 - **Veritabanı:** PostgreSQL
-- **Harita/Konum:** Google Maps API veya OpenStreetMap
+- **Harita/Konum:** Haversine tabanlı koordinat filtreleme (PostgreSQL sorgusu)
 - **Bildirim:** Firebase Cloud Messaging (FCM)

@@ -3,8 +3,11 @@ package com.gencel.backend.service;
 import com.gencel.backend.dto.CreateInstitutionRequest;
 import com.gencel.backend.dto.InstitutionResponse;
 import com.gencel.backend.entity.Institution;
+import com.gencel.backend.entity.User;
 import com.gencel.backend.exception.InstitutionNotFoundException;
+import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.repository.InstitutionRepository;
+import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -30,6 +33,9 @@ class InstitutionServiceTest {
 
     @Mock
     private InstitutionRepository institutionRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private InstitutionService institutionService;
@@ -146,6 +152,48 @@ class InstitutionServiceTest {
             assertThatThrownBy(() -> institutionService.getInstitutionById(nonExistentId))
                     .isInstanceOf(InstitutionNotFoundException.class)
                     .hasMessageContaining("Institution not found");
+        }
+    }
+
+    @Nested
+    @DisplayName("getMyInstitution")
+    class GetMyInstitution {
+
+        @Test
+        @DisplayName("INSTITUTION_ADMIN kendi kurumunu döner")
+        void shouldReturnOwnInstitutionForInstitutionAdmin() {
+            User admin = User.builder()
+                    .id(UUID.randomUUID())
+                    .email("admin@test.com")
+                    .role(User.UserRole.INSTITUTION_ADMIN)
+                    .institution(savedInstitution)
+                    .build();
+
+            when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
+            when(institutionRepository.findById(savedInstitution.getId())).thenReturn(Optional.of(savedInstitution));
+
+            InstitutionResponse response = institutionService.getMyInstitution(admin.getEmail());
+
+            assertThat(response).isNotNull();
+            assertThat(response.getId()).isEqualTo(savedInstitution.getId());
+            assertThat(response.getName()).isEqualTo(savedInstitution.getName());
+        }
+
+        @Test
+        @DisplayName("INSTITUTION_ADMIN olmayan kullanıcı için exception fırlatır")
+        void shouldThrowWhenRoleIsNotInstitutionAdmin() {
+            User nonAdmin = User.builder()
+                    .id(UUID.randomUUID())
+                    .email("elderly@test.com")
+                    .role(User.UserRole.ELDERLY)
+                    .institution(savedInstitution)
+                    .build();
+
+            when(userRepository.findByEmail(nonAdmin.getEmail())).thenReturn(Optional.of(nonAdmin));
+
+            assertThatThrownBy(() -> institutionService.getMyInstitution(nonAdmin.getEmail()))
+                    .isInstanceOf(UnauthorizedActionException.class)
+                    .hasMessageContaining("Only INSTITUTION_ADMIN");
         }
     }
 }

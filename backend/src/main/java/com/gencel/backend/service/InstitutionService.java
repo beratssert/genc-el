@@ -75,6 +75,25 @@ public class InstitutionService {
         return mapToResponse(institution);
     }
 
+    @Transactional(readOnly = true)
+    public InstitutionResponse getMyInstitution(String adminEmail) {
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (admin.getRole() != User.UserRole.INSTITUTION_ADMIN) {
+            throw new UnauthorizedActionException("Only INSTITUTION_ADMIN can view its own institution");
+        }
+
+        if (admin.getInstitution() == null || admin.getInstitution().getId() == null) {
+            throw new IllegalArgumentException("Admin user has no institution");
+        }
+
+        UUID institutionId = admin.getInstitution().getId();
+        Institution institution = institutionRepository.findById(institutionId)
+                .orElseThrow(() -> new InstitutionNotFoundException("Institution not found with id: " + institutionId));
+        return mapToResponse(institution);
+    }
+
     @Transactional
     public void deleteMyInstitution(String adminEmail) {
         User admin = userRepository.findByEmail(adminEmail)

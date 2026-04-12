@@ -4,21 +4,23 @@ import com.gencel.backend.dto.CreateTaskRequest;
 import com.gencel.backend.dto.DeliverTaskRequest;
 import com.gencel.backend.dto.StartTaskRequest;
 import com.gencel.backend.dto.TaskResponse;
+import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.exception.InvalidTaskStateException;
 import com.gencel.backend.exception.TaskNotFoundException;
 import com.gencel.backend.exception.UnauthorizedActionException;
+import com.gencel.backend.realtime.TaskRealtimeEvent;
 import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,7 +43,18 @@ public class TaskServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @InjectMocks
+    @Mock
+    private TaskAssignmentRedisService taskAssignmentRedisService;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private FileStorageService fileStorageService;
+
+    @Mock
+    private TaskRealtimePublisher taskRealtimePublisher;
+
     private TaskService taskService;
 
     private User elderlyUser;
@@ -50,6 +63,15 @@ public class TaskServiceTest {
 
     @BeforeEach
     void setUp() {
+        taskService = new TaskService(
+                taskRepository,
+                taskLogRepository,
+                userRepository,
+                fileStorageService,
+                taskRealtimePublisher,
+                Optional.of(taskAssignmentRedisService),
+                notificationService);
+
         elderlyUser = User.builder()
                 .id(UUID.randomUUID())
                 .email("elderly@test.com")
@@ -129,6 +151,50 @@ public class TaskServiceTest {
         assertEquals(task.getId(), responses.get(0).getId());
     }
 
+    @Test
+    void getNearbyPendingTasks_Success() {
+        Institution institution = Institution.builder().id(UUID.randomUUID()).build();
+        studentUser.setInstitution(institution);
+        studentUser.setLatitude(39.93);
+        studentUser.setLongitude(32.85);
+
+        elderlyUser.setInstitution(institution);
+        task.setRequester(elderlyUser);
+        task.setStatus(Task.TaskStatus.PENDING);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findNearbyPendingTasks(institution.getId(), 39.93, 32.85, 5.0))
+                .thenReturn(List.of(task));
+
+        List<TaskResponse> responses = taskService.getNearbyPendingTasks(studentUser.getEmail(), null, null, null);
+
+        assertEquals(1, responses.size());
+        assertEquals(task.getId(), responses.get(0).getId());
+        verify(taskRepository).findNearbyPendingTasks(institution.getId(), 39.93, 32.85, 5.0);
+    }
+
+    @Test
+    void getNearbyPendingTasks_ThrowsWhenNotStudent() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.getNearbyPendingTasks(elderlyUser.getEmail(), 39.9, 32.8, 3.0));
+
+        assertEquals("Only STUDENT users can list nearby pending tasks", exception.getMessage());
+    }
+
+    @Test
+    void getNearbyPendingTasks_ThrowsWhenRadiusInvalid() {
+        Institution institution = Institution.builder().id(UUID.randomUUID()).build();
+        studentUser.setInstitution(institution);
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> taskService.getNearbyPendingTasks(studentUser.getEmail(), 39.9, 32.8, 0.0));
+
+        assertEquals("radiusKm must be greater than 0", exception.getMessage());
+    }
+
     // --- getMyTasks Tests ---
 
     @Test
@@ -168,10 +234,49 @@ public class TaskServiceTest {
     void getMyTasks_ThrowsException_WhenUserNotFound() {
         when(userRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                taskService.getMyTasks("notfound@test.com"));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> taskService.getMyTasks("notfound@test.com"));
 
         assertEquals("User not found", exception.getMessage());
+    }
+
+    @Test
+    void getMyActiveTask_Success() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.IN_PROGRESS);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findFirstByVolunteerIdAndStatusInOrderByUpdatedAtDesc(
+                eq(studentUser.getId()), anyList()))
+                .thenReturn(Optional.of(task));
+
+        Optional<TaskResponse> response = taskService.getMyActiveTask(studentUser.getEmail());
+
+        assertTrue(response.isPresent());
+        assertEquals(task.getId(), response.get().getId());
+        assertEquals(Task.TaskStatus.IN_PROGRESS.name(), response.get().getStatus());
+    }
+
+    @Test
+    void getMyActiveTask_ReturnsEmpty_WhenNoActiveTask() {
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findFirstByVolunteerIdAndStatusInOrderByUpdatedAtDesc(
+                eq(studentUser.getId()), anyList()))
+                .thenReturn(Optional.empty());
+
+        Optional<TaskResponse> response = taskService.getMyActiveTask(studentUser.getEmail());
+
+        assertTrue(response.isEmpty());
+    }
+
+    @Test
+    void getMyActiveTask_ThrowsWhenNotStudent() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.getMyActiveTask(elderlyUser.getEmail()));
+
+        assertEquals("Only STUDENT users can view active task", exception.getMessage());
     }
 
     // --- assignTask Tests ---
@@ -188,7 +293,9 @@ public class TaskServiceTest {
                 .note(task.getNote())
                 .isActive(true)
                 .build();
-        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task), Optional.of(assignedTask));
+        when(taskRepository.findById(task.getId()))
+                .thenReturn(Optional.of(task))
+                .thenReturn(Optional.of(assignedTask));
         when(taskRepository.assignIfPending(task.getId(), studentUser)).thenReturn(1);
 
         TaskResponse response = taskService.assignTask(task.getId(), studentUser.getEmail());
@@ -196,15 +303,18 @@ public class TaskServiceTest {
         assertNotNull(response);
         assertEquals(Task.TaskStatus.ASSIGNED.name(), response.getStatus());
         assertEquals(studentUser.getId(), response.getVolunteerId());
+        verify(taskAssignmentRedisService).prepareAssignment(any(Task.class), eq(studentUser));
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher).publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_ASSIGNED),
+                eq(studentUser));
     }
 
     @Test
     void assignTask_ThrowsException_WhenUserNotFound() {
         when(userRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                taskService.assignTask(task.getId(), "notfound@test.com"));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> taskService.assignTask(task.getId(), "notfound@test.com"));
 
         assertEquals("User not found", exception.getMessage());
         verify(taskRepository, never()).save(any(Task.class));
@@ -214,8 +324,8 @@ public class TaskServiceTest {
     void assignTask_ThrowsException_WhenUserIsNotStudent() {
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
 
-        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class, () ->
-                taskService.assignTask(task.getId(), elderlyUser.getEmail()));
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.assignTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Only STUDENT users can accept tasks", exception.getMessage());
         verify(taskRepository, never()).save(any(Task.class));
@@ -226,8 +336,8 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
 
-        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () ->
-                taskService.assignTask(task.getId(), studentUser.getEmail()));
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.assignTask(task.getId(), studentUser.getEmail()));
 
         assertEquals("Task not found", exception.getMessage());
         verify(taskRepository, never()).save(any(Task.class));
@@ -247,6 +357,180 @@ public class TaskServiceTest {
         verify(taskRepository, never()).save(any(Task.class));
     }
 
+    // --- rejectTask Tests ---
+
+    @Test
+    void rejectTask_Success() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+        User nextStudent = User.builder()
+                .id(UUID.randomUUID())
+                .email("next@test.com")
+                .role(User.UserRole.STUDENT)
+                .build();
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())).thenReturn(Optional.of(nextStudent));
+
+        TaskResponse response = taskService.rejectTask(task.getId(), studentUser.getEmail());
+
+        assertNotNull(response);
+        assertEquals(Task.TaskStatus.ASSIGNED.name(), response.getStatus());
+        assertEquals(nextStudent.getId(), response.getVolunteerId());
+        verify(taskRepository, atLeastOnce()).save(any(Task.class));
+        verify(taskAssignmentRedisService).clearPendingAssignment(task.getId());
+        verify(taskAssignmentRedisService).updatePendingAssignment(task.getId(), nextStudent.getId());
+        verify(taskLogRepository, atLeast(2)).save(any(TaskLog.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenUserNotFound() {
+        when(userRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> taskService.rejectTask(task.getId(), "notfound@test.com"));
+
+        assertEquals("User not found", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenUserIsNotStudent() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.rejectTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Only STUDENT users can reject tasks", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenTaskNotFound() {
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.rejectTask(task.getId(), studentUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenTaskIsNotAssigned() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.PENDING);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
+                () -> taskService.rejectTask(task.getId(), studentUser.getEmail()));
+
+        assertEquals("Task is not in ASSIGNED status", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenTaskAssignedToAnotherStudent() {
+        User anotherStudent = User.builder()
+                .id(UUID.randomUUID())
+                .email("another@test.com")
+                .role(User.UserRole.STUDENT)
+                .build();
+        task.setVolunteer(anotherStudent);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.rejectTask(task.getId(), studentUser.getEmail()));
+
+        assertEquals("You are not assigned to this task", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void handleAssignmentTimeout_ReassignsToNextAvailableStudent() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+        User nextStudent = User.builder()
+                .id(UUID.randomUUID())
+                .email("next@test.com")
+                .role(User.UserRole.STUDENT)
+                .build();
+
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())).thenReturn(Optional.of(nextStudent));
+
+        taskService.handleAssignmentTimeout(task.getId());
+
+        assertEquals(Task.TaskStatus.ASSIGNED, task.getStatus());
+        assertEquals(nextStudent, task.getVolunteer());
+        verify(taskAssignmentRedisService).updatePendingAssignment(task.getId(), nextStudent.getId());
+        verify(taskLogRepository, atLeastOnce()).save(any(TaskLog.class));
+    }
+
+    @Test
+    void handleAssignmentTimeout_CancelsWhenNoCandidateLeft() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())).thenReturn(Optional.empty());
+
+        taskService.handleAssignmentTimeout(task.getId());
+
+        assertEquals(Task.TaskStatus.CANCELLED, task.getStatus());
+        assertNull(task.getVolunteer());
+        verify(taskAssignmentRedisService).clearCandidateQueue(task.getId());
+        verify(taskLogRepository, atLeastOnce()).save(any(TaskLog.class));
+    }
+
+    // --- confirmStartTask Tests ---
+
+    @Test
+    void confirmStartTask_Success() {
+        StartTaskRequest request = StartTaskRequest.builder()
+                .totalAmountGiven(java.math.BigDecimal.valueOf(100.0))
+                .build();
+
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenReturn(task);
+
+        TaskResponse response = taskService.confirmStartTask(task.getId(), elderlyUser.getEmail(), request);
+
+        assertNotNull(response);
+        assertEquals(Boolean.TRUE, response.getStartConfirmed());
+        assertEquals(java.math.BigDecimal.valueOf(100.0), response.getTotalAmountGiven());
+        verify(taskRepository).save(task);
+        verify(taskLogRepository).save(any(TaskLog.class));
+    }
+
+    @Test
+    void confirmStartTask_ThrowsException_WhenNotRequester() {
+        StartTaskRequest request = StartTaskRequest.builder().build();
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.confirmStartTask(task.getId(), studentUser.getEmail(), request));
+
+        assertEquals("Only the requester can confirm the task start", exception.getMessage());
+    }
+
     // --- startTask Tests ---
 
     @Test
@@ -256,6 +540,8 @@ public class TaskServiceTest {
                 .build();
         task.setVolunteer(studentUser);
         task.setStatus(Task.TaskStatus.ASSIGNED);
+        task.setStartConfirmed(true);
+        task.setTotalAmountGiven(java.math.BigDecimal.valueOf(100.0));
 
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
@@ -268,6 +554,8 @@ public class TaskServiceTest {
         assertEquals(java.math.BigDecimal.valueOf(100.0), response.getTotalAmountGiven());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher).publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_STARTED),
+                eq(studentUser));
     }
 
     @Test
@@ -342,6 +630,8 @@ public class TaskServiceTest {
         assertEquals("http://example.com/receipt.jpg", response.getReceiptImageUrl());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher).publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_DELIVERED),
+                eq(studentUser));
     }
 
     @Test
@@ -379,6 +669,7 @@ public class TaskServiceTest {
     @Test
     void completeTask_Success() {
         task.setStatus(Task.TaskStatus.DELIVERED);
+        task.setDeliveryConfirmed(true);
 
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
@@ -390,6 +681,8 @@ public class TaskServiceTest {
         assertEquals(Task.TaskStatus.COMPLETED.name(), response.getStatus());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher)
+                .publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_COMPLETED), eq(elderlyUser));
     }
 
     @Test
@@ -493,6 +786,78 @@ public class TaskServiceTest {
 
         TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
                 () -> taskService.cancelTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
+    }
+
+    // --- uploadTaskReceipt Tests ---
+
+    @Test
+    void uploadTaskReceipt_Success() {
+        task.setStatus(Task.TaskStatus.DELIVERED);
+        task.setVolunteer(studentUser);
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+        when(mockFile.getOriginalFilename()).thenReturn("receipt.jpg");
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(fileStorageService.uploadFile(mockFile, task.getId()))
+                .thenReturn("/uploads/receipts/" + task.getId() + "/receipt.jpg");
+        when(taskRepository.save(any(Task.class))).thenReturn(task);
+
+        TaskResponse response = taskService.uploadTaskReceipt(task.getId(), elderlyUser.getEmail(), mockFile);
+
+        assertNotNull(response);
+        assertEquals(Task.TaskStatus.DELIVERED.name(), response.getStatus());
+        verify(fileStorageService).validateFile(mockFile);
+        verify(fileStorageService).uploadFile(mockFile, task.getId());
+        verify(taskRepository).save(task);
+        verify(taskLogRepository).save(any(TaskLog.class));
+        verify(notificationService).notifyTaskProgress(eq(studentUser), eq(task), any(), any());
+    }
+
+    @Test
+    void uploadTaskReceipt_ThrowsException_WhenNotRequester() {
+        task.setStatus(Task.TaskStatus.DELIVERED);
+        User anotherElderly = User.builder().id(UUID.randomUUID()).email("anotherelderly@test.com")
+                .role(User.UserRole.ELDERLY).build();
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        when(userRepository.findByEmail(anotherElderly.getEmail())).thenReturn(Optional.of(anotherElderly));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.uploadTaskReceipt(task.getId(), anotherElderly.getEmail(), mockFile));
+
+        assertEquals("Only the task requester can upload receipts", exception.getMessage());
+    }
+
+    @Test
+    void uploadTaskReceipt_ThrowsException_WhenTaskNotDelivered() {
+        task.setStatus(Task.TaskStatus.IN_PROGRESS);
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
+                () -> taskService.uploadTaskReceipt(task.getId(), elderlyUser.getEmail(), mockFile));
+
+        assertEquals("Receipt can only be uploaded after task is DELIVERED", exception.getMessage());
+    }
+
+    @Test
+    void uploadTaskReceipt_ThrowsTaskNotFound_WhenTaskDoesNotExist() {
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.uploadTaskReceipt(task.getId(), elderlyUser.getEmail(), mockFile));
 
         assertEquals("Task not found", exception.getMessage());
     }

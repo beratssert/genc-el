@@ -1,12 +1,17 @@
 package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
+import com.gencel.backend.dto.UpdateFcmTokenRequest;
+import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
+import com.gencel.backend.dto.UserPageResponse;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.Institution;
+import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.exception.UnauthorizedActionException;
 import com.gencel.backend.exception.UserNotFoundException;
+import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -37,7 +44,13 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private TaskRepository taskRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private UserLocationRealtimePublisher userLocationRealtimePublisher;
 
     @InjectMocks
     private UserService userService;
@@ -213,6 +226,44 @@ class UserServiceTest {
             verify(userRepository).findByInstitutionIdAndRoleOrderByCreatedAtDesc(institution.getId(),
                     User.UserRole.STUDENT);
         }
+
+        @Test
+        @DisplayName("sayfalı listeleme arama ve sıralama ile çalışır")
+        void shouldListUsersWithPaginationSearchAndSort() {
+            User student = User.builder()
+                    .id(UUID.randomUUID())
+                    .role(User.UserRole.STUDENT)
+                    .firstName("Ali")
+                    .email("ali@test.com")
+                    .build();
+
+            when(userRepository.findByEmail("admin@kurum.gov.tr")).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findManagedUsers(
+                    eq(institution.getId()),
+                    eq(User.UserRole.STUDENT),
+                    eq("ali"),
+                    eq(User.UserRole.INSTITUTION_ADMIN),
+                    any(PageRequest.class)))
+                    .thenReturn(new PageImpl<>(List.of(student), PageRequest.of(0, 10), 1));
+
+            UserPageResponse result = userService.listUsersByInstitutionPaged(
+                    "admin@kurum.gov.tr",
+                    User.UserRole.STUDENT,
+                    "ali",
+                    0,
+                    10,
+                    "createdAt",
+                    "desc");
+
+            assertThat(result.getItems()).hasSize(1);
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            verify(userRepository).findManagedUsers(
+                    eq(institution.getId()),
+                    eq(User.UserRole.STUDENT),
+                    eq("ali"),
+                    eq(User.UserRole.INSTITUTION_ADMIN),
+                    any(PageRequest.class));
+        }
     }
 
     @Nested
@@ -264,6 +315,56 @@ class UserServiceTest {
         }
 
         @Test
+        @DisplayName("updateMyFcmToken token kaydeder")
+        void shouldUpdateMyFcmToken() {
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateFcmTokenRequest request = UpdateFcmTokenRequest.builder()
+                    .fcmToken("  token-123  ")
+                    .build();
+
+            UserResponse response = userService.updateMyFcmToken(institutionAdmin.getEmail(), request);
+
+            assertThat(response.getFcmToken()).isEqualTo("token-123");
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("updateMyLocation kullanıcının konumunu günceller")
+        void shouldUpdateMyLocation() {
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateLocationRequest request = UpdateLocationRequest.builder()
+                    .latitude(39.9334)
+                    .longitude(32.8597)
+                    .build();
+
+            UserResponse response = userService.updateMyLocation(institutionAdmin.getEmail(), request);
+
+            assertThat(response.getLatitude()).isEqualTo(39.9334);
+            assertThat(response.getLongitude()).isEqualTo(32.8597);
+            verify(userRepository).save(any(User.class));
+            verify(userLocationRealtimePublisher).publishLocationUpdated(any(User.class));
+        }
+
+        @Test
+        @DisplayName("updateMyLocation kullanıcı bulunamazsa exception fırlatır")
+        void shouldThrowWhenUserNotFoundOnUpdateLocation() {
+            when(userRepository.findByEmail("unknown@test.com")).thenReturn(Optional.empty());
+
+            UpdateLocationRequest request = UpdateLocationRequest.builder()
+                    .latitude(39.9)
+                    .longitude(32.8)
+                    .build();
+
+            assertThatThrownBy(() -> userService.updateMyLocation("unknown@test.com", request))
+                    .isInstanceOf(UserNotFoundException.class)
+                    .hasMessageContaining("User not found");
+        }
+
+        @Test
         @DisplayName("STUDENT için boş IBAN ile updateMyProfile exception fırlatır")
         void shouldThrowWhenStudentUpdatesWithBlankIban() {
             User student = User.builder()
@@ -290,6 +391,177 @@ class UserServiceTest {
             userService.deactivateMyAccount(institutionAdmin.getEmail());
 
             verify(userRepository).delete(institutionAdmin);
+        }
+    }
+
+    @Nested
+    @DisplayName("Managed user operations")
+    class ManagedUserOperations {
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcı detayını alır")
+        void shouldGetManagedUserById() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .email("target@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+
+            UserResponse response = userService.getUserByIdForInstitution(institutionAdmin.getEmail(), target.getId());
+
+            assertThat(response.getEmail()).isEqualTo("target@test.com");
+        }
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcıyı günceller")
+        void shouldUpdateManagedUser() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.ELDERLY)
+                    .firstName("Eski")
+                    .email("target2@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                    .firstName("Yeni")
+                    .phoneNumber("0500 123 45 67")
+                    .build();
+
+            UserResponse response = userService.updateUserByIdForInstitution(institutionAdmin.getEmail(),
+                    target.getId(), request);
+
+            assertThat(response.getFirstName()).isEqualTo("Yeni");
+            assertThat(response.getPhoneNumber()).isEqualTo("0500 123 45 67");
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcıyı soft-delete eder")
+        void shouldDeleteManagedUser() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+
+            userService.deleteUserByIdForInstitution(institutionAdmin.getEmail(), target.getId());
+
+            verify(userRepository).delete(target);
+        }
+
+        @Test
+        @DisplayName("admin kurum içindeki kullanıcının görev geçmişini alır")
+        void shouldGetManagedUserHistory() {
+            User target = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .build();
+
+            Task task = Task.builder()
+                    .id(UUID.randomUUID())
+                    .requester(target)
+                    .status(Task.TaskStatus.COMPLETED)
+                    .build();
+
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.findByIdAndInstitutionId(target.getId(), institution.getId()))
+                    .thenReturn(Optional.of(target));
+            when(taskRepository.findByRequesterIdOrVolunteerIdOrderByUpdatedAtDesc(target.getId(), target.getId()))
+                    .thenReturn(List.of(task));
+
+            var result = userService.getUserHistoryForInstitution(institutionAdmin.getEmail(), target.getId());
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getStatus()).isEqualTo(Task.TaskStatus.COMPLETED.name());
+        }
+    }
+
+    @Nested
+    @DisplayName("getNearbyAvailableStudents")
+    class NearbyStudents {
+
+        @Test
+        @DisplayName("ELDERLY kullanıcı için yakındaki öğrencileri döner")
+        void shouldReturnNearbyStudentsForElderly() {
+            User elderly = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.ELDERLY)
+                    .email("elderly@test.com")
+                    .latitude(39.9334)
+                    .longitude(32.8597)
+                    .build();
+
+            User student = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .email("nearby.student@test.com")
+                    .firstName("Nearby")
+                    .lastName("Student")
+                    .build();
+
+            when(userRepository.findByEmail(elderly.getEmail())).thenReturn(Optional.of(elderly));
+            when(userRepository.findNearbyAvailableStudents(institution.getId(), elderly.getId(), elderly.getLatitude(),
+                    elderly.getLongitude(), 5.0)).thenReturn(List.of(student));
+
+            List<UserResponse> response = userService.getNearbyAvailableStudents(elderly.getEmail(), null, null, null);
+
+            assertThat(response).hasSize(1);
+            assertThat(response.get(0).getEmail()).isEqualTo("nearby.student@test.com");
+            verify(userRepository).findNearbyAvailableStudents(institution.getId(), elderly.getId(),
+                    elderly.getLatitude(),
+                    elderly.getLongitude(), 5.0);
+        }
+
+        @Test
+        @DisplayName("ELDERLY dışı kullanıcı için exception fırlatır")
+        void shouldThrowWhenUserIsNotElderly() {
+            User student = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.STUDENT)
+                    .email("student@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(student.getEmail())).thenReturn(Optional.of(student));
+
+            assertThatThrownBy(() -> userService.getNearbyAvailableStudents(student.getEmail(), 39.9, 32.8, 5.0))
+                    .isInstanceOf(UnauthorizedActionException.class)
+                    .hasMessageContaining("Only ELDERLY users");
+        }
+
+        @Test
+        @DisplayName("radiusKm 0 veya negatifse exception fırlatır")
+        void shouldThrowWhenRadiusIsInvalid() {
+            User elderly = User.builder()
+                    .id(UUID.randomUUID())
+                    .institution(institution)
+                    .role(User.UserRole.ELDERLY)
+                    .email("elderly2@test.com")
+                    .build();
+
+            when(userRepository.findByEmail(elderly.getEmail())).thenReturn(Optional.of(elderly));
+
+            assertThatThrownBy(() -> userService.getNearbyAvailableStudents(elderly.getEmail(), 39.9, 32.8, 0.0))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("radiusKm");
         }
     }
 }

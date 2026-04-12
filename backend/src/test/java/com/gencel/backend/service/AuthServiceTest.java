@@ -1,7 +1,9 @@
 package com.gencel.backend.service;
 
+import com.gencel.backend.dto.ChangePasswordRequest;
 import com.gencel.backend.dto.LoginRequest;
 import com.gencel.backend.dto.LoginResponse;
+import com.gencel.backend.dto.RefreshTokenResponse;
 import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
 import com.gencel.backend.repository.UserRepository;
@@ -159,6 +161,62 @@ class AuthServiceTest {
             // Role kontrolü şifre kontrolünden önce yapılır, password stub gerekmez
 
             assertThatThrownBy(() -> authService.institutionLogin(loginRequest))
+                    .isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("refreshToken")
+    class RefreshToken {
+
+        @Test
+        @DisplayName("aktif kullanıcı için yeni token üretir")
+        void shouldRefreshTokenSuccessfully() {
+            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(studentUser));
+            when(jwtService.generateToken(any(UserDetails.class))).thenReturn("refreshed-jwt");
+
+            RefreshTokenResponse response = authService.refreshToken("student@test.com");
+
+            assertThat(response).isNotNull();
+            assertThat(response.getToken()).isEqualTo("refreshed-jwt");
+        }
+    }
+
+    @Nested
+    @DisplayName("changePassword")
+    class ChangePassword {
+
+        @Test
+        @DisplayName("mevcut şifre doğruysa şifreyi günceller")
+        void shouldChangePasswordSuccessfully() {
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("password123")
+                    .newPassword("Newpass123")
+                    .build();
+
+            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(studentUser));
+            when(passwordEncoder.matches("password123", studentUser.getPasswordHash())).thenReturn(true);
+            when(passwordEncoder.matches("Newpass123", studentUser.getPasswordHash())).thenReturn(false);
+            when(passwordEncoder.encode("Newpass123")).thenReturn("new-hash");
+
+            authService.changePassword("student@test.com", request);
+
+            assertThat(studentUser.getPasswordHash()).isEqualTo("new-hash");
+            verify(userRepository).save(studentUser);
+        }
+
+        @Test
+        @DisplayName("mevcut şifre yanlışsa 401 hatası verir")
+        void shouldThrowWhenCurrentPasswordIsWrong() {
+            ChangePasswordRequest request = ChangePasswordRequest.builder()
+                    .currentPassword("wrong")
+                    .newPassword("Newpass123")
+                    .build();
+
+            when(userRepository.findByEmail("student@test.com")).thenReturn(Optional.of(studentUser));
+            when(passwordEncoder.matches("wrong", studentUser.getPasswordHash())).thenReturn(false);
+
+            assertThatThrownBy(() -> authService.changePassword("student@test.com", request))
                     .isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
         }
     }

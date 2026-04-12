@@ -54,6 +54,9 @@ public class User {
     private Double latitude;
     private Double longitude;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

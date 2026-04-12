@@ -32,6 +32,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<Map<String, String>> handleBadCredentials(
+            org.springframework.security.authentication.BadCredentialsException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     @ExceptionHandler(org.springframework.security.authentication.DisabledException.class)
     public ResponseEntity<Map<String, String>> handleDisabledException(
             org.springframework.security.authentication.DisabledException ex) {
@@ -49,7 +57,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({
-            org.springframework.security.authentication.BadCredentialsException.class,
             org.springframework.security.core.userdetails.UsernameNotFoundException.class
     })
     public ResponseEntity<Map<String, String>> handleBadCredentialsException(Exception ex) {

@@ -25,6 +25,7 @@ public class UserResponse {
     private String address;
     private Double latitude;
     private Double longitude;
+    private String fcmToken;
     private Boolean isActive;
     private String iban;
     private LocalDateTime createdAt;

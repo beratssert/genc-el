@@ -10,6 +10,7 @@ import com.gencel.backend.entity.User;
 import com.gencel.backend.exception.InvalidTaskStateException;
 import com.gencel.backend.exception.TaskNotFoundException;
 import com.gencel.backend.exception.UnauthorizedActionException;
+import com.gencel.backend.realtime.TaskRealtimeEvent;
 import com.gencel.backend.repository.TaskLogRepository;
 import com.gencel.backend.repository.TaskRepository;
 import com.gencel.backend.repository.UserRepository;
@@ -51,6 +52,9 @@ public class TaskServiceTest {
 
     @Mock
     private FileStorageService fileStorageService;
+
+    @Mock
+    private TaskRealtimePublisher taskRealtimePublisher;
 
     @InjectMocks
     private TaskService taskService;
@@ -215,6 +219,8 @@ public class TaskServiceTest {
         assertEquals(studentUser.getId(), response.getVolunteerId());
         verify(taskAssignmentRedisService).prepareAssignment(any(Task.class), eq(studentUser));
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher).publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_ASSIGNED),
+                eq(studentUser));
     }
 
     @Test
@@ -462,6 +468,8 @@ public class TaskServiceTest {
         assertEquals(java.math.BigDecimal.valueOf(100.0), response.getTotalAmountGiven());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher).publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_STARTED),
+                eq(studentUser));
     }
 
     @Test
@@ -536,6 +544,8 @@ public class TaskServiceTest {
         assertEquals("http://example.com/receipt.jpg", response.getReceiptImageUrl());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher).publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_DELIVERED),
+                eq(studentUser));
     }
 
     @Test
@@ -585,6 +595,8 @@ public class TaskServiceTest {
         assertEquals(Task.TaskStatus.COMPLETED.name(), response.getStatus());
         verify(taskRepository).save(task);
         verify(taskLogRepository).save(any(TaskLog.class));
+        verify(taskRealtimePublisher)
+                .publishTaskEvent(any(Task.class), eq(TaskRealtimeEvent.EventType.TASK_COMPLETED), eq(elderlyUser));
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.gencel.backend.dto.CreateTaskRequest;
 import com.gencel.backend.dto.DeliverTaskRequest;
 import com.gencel.backend.dto.StartTaskRequest;
 import com.gencel.backend.dto.TaskResponse;
+import com.gencel.backend.realtime.TaskRealtimeEvent;
 import org.springframework.web.multipart.MultipartFile;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
@@ -31,6 +32,7 @@ public class TaskService {
     private final TaskLogRepository taskLogRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final TaskRealtimePublisher taskRealtimePublisher;
 
     @Autowired(required = false)
     private TaskAssignmentRedisService taskAssignmentRedisService;
@@ -58,6 +60,7 @@ public class TaskService {
         task = taskRepository.save(task);
 
         logAction(task, requester, TaskLog.TaskLogAction.CREATED, "Shopping task created by elderly user.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_CREATED, requester);
 
         return mapToResponse(task);
     }
@@ -114,6 +117,7 @@ public class TaskService {
         notificationService.notifyTaskAssigned(volunteer, task,
                 "Yeni görev atandı",
                 "Yakınında yeni bir görev var. Kabul edilen görevi görüntüleyebilirsin.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_ASSIGNED, volunteer);
 
         return mapToResponse(task);
     }
@@ -177,6 +181,7 @@ public class TaskService {
             notificationService.notifyTaskAssigned(nextVolunteer, task,
                     "Yeni görev atandı",
                     "Bir önceki öğrenci görevi kabul etmedi. Görev sana atandı.");
+            publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_REASSIGNED, nextVolunteer);
 
             return mapToResponse(task);
         }
@@ -193,6 +198,7 @@ public class TaskService {
         notificationService.notifyTaskCancelled(task.getRequester(), task,
                 "Görev için öğrenci bulunamadı",
                 "Şu anda uygun bir öğrenci bulunamadı. Lütfen daha sonra tekrar deneyin.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_CANCELLED, releasedVolunteer);
 
         return mapToResponse(task);
     }
@@ -222,6 +228,7 @@ public class TaskService {
         notificationService.notifyTaskProgress(task.getVolunteer(), task,
                 "Görev başlangıcı onaylandı",
                 "Yaşlı kullanıcı verilen tutarı onayladı. Alışverişe başlayabilirsin.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_START_CONFIRMED, requester);
 
         return mapToResponse(task);
     }
@@ -252,6 +259,7 @@ public class TaskService {
         notificationService.notifyTaskProgress(task.getRequester(), task,
                 "Alışveriş başladı",
                 "Öğrenci alışverişe başladı ve görev ilerliyor.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_STARTED, task.getVolunteer());
 
         return mapToResponse(task);
     }
@@ -277,6 +285,7 @@ public class TaskService {
         notificationService.notifyTaskProgress(task.getRequester(), task,
                 "Teslimat yapıldı",
                 "Ürünler ve para üstü teslim edildi. Onay bekleniyor.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_DELIVERED, task.getVolunteer());
 
         return mapToResponse(task);
     }
@@ -310,6 +319,7 @@ public class TaskService {
         notificationService.notifyTaskProgress(task.getVolunteer(), task,
                 "Teslimat onaylandı",
                 "Yaşlı kullanıcı teslimatı onayladı. Görevi kapatabilirsin.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_DELIVERY_CONFIRMED, requester);
 
         return mapToResponse(task);
     }
@@ -345,6 +355,7 @@ public class TaskService {
         notificationService.notifyTaskProgress(task.getVolunteer(), task,
                 "Görev tamamlandı",
                 "Talep sahibi teslimatı onayladı. Görev başarıyla kapandı.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_COMPLETED, requester);
 
         return mapToResponse(task);
     }
@@ -385,6 +396,7 @@ public class TaskService {
         task = taskRepository.save(task);
 
         logAction(task, user, TaskLog.TaskLogAction.CANCELLED, "Task cancelled by user.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_CANCELLED, user);
 
         return mapToResponse(task);
     }
@@ -423,8 +435,13 @@ public class TaskService {
         notificationService.notifyTaskProgress(task.getVolunteer(), task,
                 "Makbuz Yüklendi",
                 "Yaşlı kullanıcı alışveriş makbuzunu yükledi.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_RECEIPT_UPLOADED, requester);
 
         return mapToResponse(task);
+    }
+
+    private void publishTaskEvent(Task task, TaskRealtimeEvent.EventType eventType, User actor) {
+        taskRealtimePublisher.publishTaskEvent(task, eventType, actor);
     }
 
     private Task getAssignedTaskForStudent(UUID taskId, String email) {

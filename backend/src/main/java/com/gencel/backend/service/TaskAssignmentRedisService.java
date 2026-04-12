@@ -39,16 +39,17 @@ public class TaskAssignmentRedisService {
         .map(institution -> institution.getId())
         .orElseThrow(() -> new IllegalArgumentException("Volunteer has no institution"));
 
-    List<User> students = userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(
-        institutionId, User.UserRole.STUDENT);
-
     Double requesterLat = Optional.ofNullable(task.getRequester()).map(User::getLatitude).orElse(null);
     Double requesterLon = Optional.ofNullable(task.getRequester()).map(User::getLongitude).orElse(null);
 
+    List<User> students = userRepository.findNearbyAvailableStudents(
+        institutionId,
+        volunteer.getId(),
+        requesterLat,
+        requesterLon,
+        MATCH_RADIUS_KM);
+
     List<String> candidateIds = students.stream()
-        .filter(student -> !student.getId().equals(volunteer.getId()))
-        .filter(student -> isAvailable(student.getId()))
-        .filter(student -> isWithinRadius(student, requesterLat, requesterLon))
         .sorted(Comparator
             .comparingLong((User student) -> completedTasksThisMonth(student.getId()))
             .thenComparingDouble(student -> distanceOrMax(student, requesterLat, requesterLon)))
@@ -111,18 +112,6 @@ public class TaskAssignmentRedisService {
         Task.TaskStatus.COMPLETED,
         start,
         end);
-  }
-
-  private boolean isWithinRadius(User student, Double requesterLat, Double requesterLon) {
-    if (requesterLat == null || requesterLon == null) {
-      return true;
-    }
-    Double studentLat = student.getLatitude();
-    Double studentLon = student.getLongitude();
-    if (studentLat == null || studentLon == null) {
-      return false;
-    }
-    return haversineKm(requesterLat, requesterLon, studentLat, studentLon) <= MATCH_RADIUS_KM;
   }
 
   private double distanceOrMax(User student, Double requesterLat, Double requesterLon) {

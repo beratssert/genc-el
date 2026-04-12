@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/data/demo_products.dart';
 import '../../core/models/product_model.dart';
-import '../../core/models/task_model.dart';
+import '../../repositories/task_repo.dart';
 import '../../widgets/order/order_item_row.dart';
 
 /// Sipariş özet ekranı.
 /// - Sepetteki tüm ürünlerin listesini gösterir.
 /// - Ürün miktarları buradan da düzenlenebilir.
-/// - "Siparişi Onayla" → onay dialog'u → ana sayfaya dön.
-class OrderSummaryScreen extends StatefulWidget {
+/// - "Siparişi Onayla" → onay dialog'u → backend'e gönder → ana sayfaya dön.
+class OrderSummaryScreen extends ConsumerStatefulWidget {
   const OrderSummaryScreen({
     super.key,
     required this.cart,
@@ -19,11 +20,13 @@ class OrderSummaryScreen extends StatefulWidget {
   final VoidCallback onCartChanged;
 
   @override
-  State<OrderSummaryScreen> createState() => _OrderSummaryScreenState();
+  ConsumerState<OrderSummaryScreen> createState() =>
+      _OrderSummaryScreenState();
 }
 
-class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
+class _OrderSummaryScreenState extends ConsumerState<OrderSummaryScreen> {
   final _noteController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -67,38 +70,48 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
     );
 
     if (confirmed == true && mounted) {
-      final shoppingList = _cartProducts
-          .map(
-            (p) => ShoppingItem(
-              name: p.name,
-              qty: widget.cart[p.id] ?? 1,
-              unit: p.unit,
+      setState(() => _isSubmitting = true);
+
+      try {
+        // Backend'e görev oluşturma çağrısı
+        final taskRepo = ref.read(taskRepositoryProvider);
+        final shoppingList = _cartProducts
+            .map((p) => '${widget.cart[p.id] ?? 1} ${p.unit} ${p.name}')
+            .toList();
+
+        final createdTask = await taskRepo.createTask(
+          shoppingList: shoppingList,
+          note: note.isNotEmpty ? note : null,
+        );
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                const Text('🎉 Siparişiniz oluşturuldu! Öğrenci aranıyor…'),
+            backgroundColor: const Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-          )
-          .toList();
-
-      final newTask = TaskModel(
-        id: DateTime.now().millisecondsSinceEpoch % 10000,
-        status: TaskStatus.pending,
-        createdAt: DateTime.now(),
-        elderlyName: 'Mehmet Bey',
-        shoppingList: shoppingList,
-        note: note.isNotEmpty ? note : null,
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('🎉 Siparişiniz oluşturuldu! Öğrenci aranıyor…'),
-          backgroundColor: const Color(0xFF16A34A),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-      );
+        );
 
-      Navigator.of(context).pop(newTask);
+        Navigator.of(context).pop(createdTask);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
+      }
     }
   }
 
@@ -132,7 +145,10 @@ class _OrderSummaryScreenState extends State<OrderSummaryScreen> {
                       ),
               ),
               if (products.isNotEmpty)
-                _ConfirmButton(onTap: _showConfirmDialog),
+                _ConfirmButton(
+                  onTap: _isSubmitting ? null : () => _showConfirmDialog(),
+                  isLoading: _isSubmitting,
+                ),
             ],
           ),
         ),
@@ -314,9 +330,10 @@ class _SummaryBanner extends StatelessWidget {
 // Onayla butonu (alt)
 // ---------------------------------------------------------------------------
 class _ConfirmButton extends StatelessWidget {
-  const _ConfirmButton({required this.onTap});
+  const _ConfirmButton({this.onTap, this.isLoading = false});
 
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -324,8 +341,17 @@ class _ConfirmButton extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: FilledButton.icon(
         onPressed: onTap,
-        icon: const Icon(Icons.check_circle_outline_rounded),
-        label: const Text('Siparişi Onayla'),
+        icon: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.check_circle_outline_rounded),
+        label: Text(isLoading ? 'Gönderiliyor…' : 'Siparişi Onayla'),
         style: FilledButton.styleFrom(
           backgroundColor: const Color(0xFF16A34A),
           minimumSize: const Size.fromHeight(54),

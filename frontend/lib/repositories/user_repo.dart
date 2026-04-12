@@ -1,28 +1,46 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tdp_frontend/models/user.dart';
+import 'package:tdp_frontend/services/api_service.dart';
+import 'package:tdp_frontend/shared/api_url.dart';
 
 /// Provider for the [UserRepo] implementation.
 final userRepoProvider = Provider<UserRepo>((ref) {
-  return UserRepoImpl();
+  final apiService = ref.watch(apiServiceProvider);
+  return UserRepoImpl(apiService);
 });
 
-/// Abstract class defining the user management repository interface.
+/// Abstract class defining the user profile repository interface.
 abstract class UserRepo {
-  /// Gets detailed information for a specific user.
-  Future<Map<String, dynamic>> getUserDetail(String id);
+  /// Gets the currently logged-in user's profile.
+  Future<User> getMyProfile();
 
-  /// Gets the task history for a specific user.
-  Future<List<Map<String, dynamic>>> getUserHistory(String id);
+  /// Updates the currently logged-in user's profile.
+  Future<User> updateMyProfile(Map<String, dynamic> data);
+
+  /// Deactivates the current user's account.
+  Future<void> deactivateMyAccount();
 }
 
-/// Concrete implementation of [UserRepo] with placeholder logic.
+/// Concrete implementation of [UserRepo] connected to backend.
 class UserRepoImpl implements UserRepo {
+  final ApiService _apiService;
+
+  UserRepoImpl(this._apiService);
+
   @override
-  Future<Map<String, dynamic>> getUserDetail(String id) async {
-    throw UnimplementedError('getUserDetail() has not been implemented');
+  Future<User> getMyProfile() async {
+    final response = await _apiService.get(ApiUrl.myProfile);
+    return User.fromJson(response as Map<String, dynamic>);
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getUserHistory(String id) async {
-    throw UnimplementedError('getUserHistory() has not been implemented');
+  Future<User> updateMyProfile(Map<String, dynamic> data) async {
+    final response = await _apiService.put(ApiUrl.myProfile, data: data);
+    return User.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<void> deactivateMyAccount() async {
+    await _apiService.delete(ApiUrl.myProfile);
   }
 }

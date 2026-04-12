@@ -1,105 +1,131 @@
-import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tdp_frontend/models/task.dart';
+import 'package:tdp_frontend/services/api_service.dart';
+import 'package:tdp_frontend/shared/api_url.dart';
 
 /// Provider for the [TaskRepository] implementation.
 final taskRepositoryProvider = Provider<TaskRepository>((ref) {
-  return TaskRepositoryImpl();
+  final apiService = ref.watch(apiServiceProvider);
+  return TaskRepositoryImpl(apiService);
 });
 
 /// Abstract class defining the task (shopping workflow) repository interface.
 abstract class TaskRepository {
   /// Creates a new shopping request (Elderly).
-  Future<void> createTask(Map<String, dynamic> taskData);
-
-  /// Lists nearby pending tasks based on location (Student).
-  Future<List<Map<String, dynamic>>> getNearbyTasks({
-    required double lat,
-    required double lon,
-    double radius = 5.0,
+  Future<Task> createTask({
+    required List<String> shoppingList,
+    String? note,
   });
 
-  /// Gets the currently active task assigned to the student.
-  Future<Map<String, dynamic>?> getMyActiveTask();
+  /// Lists all pending tasks (Student sees these).
+  Future<List<Task>> getPendingTasks();
+
+  /// Lists the current user's tasks (both elderly and student).
+  Future<List<Task>> getMyTasks();
 
   /// Accepts a pending task (Student).
-  Future<void> acceptTask(String taskId);
+  Future<Task> assignTask(String taskId);
 
-  /// Starts the shopping process after arriving at the elderly's home (Student).
-  Future<void> startShopping(String taskId, double receivedAmount);
+  /// Starts the shopping (Student received money, heading to store).
+  Future<Task> startTask(String taskId, double totalAmountGiven);
 
-  /// Completes the shopping and marks as returning home (Student).
-  Future<void> completeShopping(String taskId);
+  /// Delivers the shopping (Student returned with goods).
+  Future<Task> deliverTask(
+    String taskId,
+    double changeAmount, {
+    String? receiptImageUrl,
+  });
 
-  /// Uploads a receipt image for the task (Student).
-  Future<void> uploadReceipt(String taskId, File receiptFile);
+  /// Completes the task (Elderly confirms).
+  Future<Task> completeTask(String taskId);
 
-  /// Completes the delivery and marks the task as completed (Student).
-  Future<void> completeTask(String taskId, double changeAmount, String? note);
-
-  /// Confirms that the student has arrived and started (Elderly).
-  Future<void> confirmStart(String taskId);
-
-  /// Confirms the delivery and finalizes the task (Elderly).
-  Future<void> confirmEnd(String taskId);
+  /// Cancels the task.
+  Future<Task> cancelTask(String taskId);
 }
 
-/// Concrete implementation of [TaskRepository] with placeholder logic.
+/// Concrete implementation connected to the Spring Boot backend.
 class TaskRepositoryImpl implements TaskRepository {
-  @override
-  Future<void> createTask(Map<String, dynamic> taskData) async {
-    throw UnimplementedError('createTask() has not been implemented');
-  }
+  final ApiService _apiService;
+
+  TaskRepositoryImpl(this._apiService);
 
   @override
-  Future<List<Map<String, dynamic>>> getNearbyTasks({
-    required double lat,
-    required double lon,
-    double radius = 5.0,
-  }) async {
-    throw UnimplementedError('getNearbyTasks() has not been implemented');
-  }
-
-  @override
-  Future<Map<String, dynamic>?> getMyActiveTask() async {
-    throw UnimplementedError('getMyActiveTask() has not been implemented');
-  }
-
-  @override
-  Future<void> acceptTask(String taskId) async {
-    throw UnimplementedError('acceptTask() has not been implemented');
-  }
-
-  @override
-  Future<void> startShopping(String taskId, double receivedAmount) async {
-    throw UnimplementedError('startShopping() has not been implemented');
-  }
-
-  @override
-  Future<void> completeShopping(String taskId) async {
-    throw UnimplementedError('completeShopping() has not been implemented');
-  }
-
-  @override
-  Future<void> uploadReceipt(String taskId, File receiptFile) async {
-    throw UnimplementedError('uploadReceipt() has not been implemented');
-  }
-
-  @override
-  Future<void> completeTask(
-    String taskId,
-    double changeAmount,
+  Future<Task> createTask({
+    required List<String> shoppingList,
     String? note,
-  ) async {
-    throw UnimplementedError('completeTask() has not been implemented');
+  }) async {
+    final response = await _apiService.post(
+      ApiUrl.tasks,
+      data: {
+        'shoppingList': shoppingList,
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+    );
+    return Task.fromJson(response as Map<String, dynamic>);
   }
 
   @override
-  Future<void> confirmStart(String taskId) async {
-    throw UnimplementedError('confirmStart() has not been implemented');
+  Future<List<Task>> getPendingTasks() async {
+    final response = await _apiService.get(ApiUrl.pendingTasks);
+    if (response is List) {
+      return response
+          .map((json) => Task.fromJson(json as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
   }
 
   @override
-  Future<void> confirmEnd(String taskId) async {
-    throw UnimplementedError('confirmEnd() has not been implemented');
+  Future<List<Task>> getMyTasks() async {
+    final response = await _apiService.get(ApiUrl.myTasks);
+    if (response is List) {
+      return response
+          .map((json) => Task.fromJson(json as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
+  }
+
+  @override
+  Future<Task> assignTask(String taskId) async {
+    final response = await _apiService.put(ApiUrl.assignTask(taskId));
+    return Task.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Task> startTask(String taskId, double totalAmountGiven) async {
+    final response = await _apiService.put(
+      ApiUrl.startTask(taskId),
+      data: {'totalAmountGiven': totalAmountGiven},
+    );
+    return Task.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Task> deliverTask(
+    String taskId,
+    double changeAmount, {
+    String? receiptImageUrl,
+  }) async {
+    final response = await _apiService.put(
+      ApiUrl.deliverTask(taskId),
+      data: {
+        'changeAmount': changeAmount,
+        if (receiptImageUrl != null) 'receiptImageUrl': receiptImageUrl,
+      },
+    );
+    return Task.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Task> completeTask(String taskId) async {
+    final response = await _apiService.put(ApiUrl.completeTask(taskId));
+    return Task.fromJson(response as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Task> cancelTask(String taskId) async {
+    final response = await _apiService.put(ApiUrl.cancelTask(taskId));
+    return Task.fromJson(response as Map<String, dynamic>);
   }
 }

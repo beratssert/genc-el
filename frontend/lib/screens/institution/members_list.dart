@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tdp_frontend/models/user.dart';
 import 'package:tdp_frontend/repositories/institution_repo.dart';
 
 class MembersListScreen extends ConsumerStatefulWidget {
@@ -15,7 +16,7 @@ class _MembersListScreenState extends ConsumerState<MembersListScreen> {
     final membersList = ref.watch(institutionRepoProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Members List')),
-      body: FutureBuilder(
+      body: FutureBuilder<List<User>>(
         future: membersList.getUsers(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -33,9 +34,9 @@ class _MembersListScreenState extends ConsumerState<MembersListScreen> {
                 final member = users[index];
                 return Card(
                   child: ListTile(
-                    title: Text('${member['firstName']} ${member['lastName']}'),
-                    subtitle: Text(member['email'] ?? 'No detail'),
-                    trailing: Text(member['role']),
+                    title: Text(member.fullName),
+                    subtitle: Text(member.email ?? 'No detail'),
+                    trailing: Text(member.role.name),
                   ),
                 );
               },

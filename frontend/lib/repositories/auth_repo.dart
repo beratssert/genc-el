@@ -10,57 +10,36 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 
 /// Abstract class defining the authentication repository interface.
 abstract class AuthRepository {
-  /// Logs in a user and returns a JWT token or similar.
-  Future<Map<String, dynamic>> userLogin(String username, String password);
+  /// Logs in a user (STUDENT / ELDERLY) and returns LoginResponse.
+  Future<Map<String, dynamic>> userLogin(String email, String password);
 
-  Future<Map<String, dynamic>> institutionLogin(
-    String username,
-    String password,
-  );
-
-  /// Refreshes the existing access token.
-  Future<void> refreshToken();
-
-  /// Changes the user's password.
-  Future<void> changePassword(String oldPassword, String newPassword);
+  /// Logs in an institution admin and returns LoginResponse.
+  Future<Map<String, dynamic>> institutionLogin(String email, String password);
 }
 
-/// Concrete implementation of [AuthRepository] with placeholder logic.
+/// Concrete implementation of [AuthRepository].
 class AuthRepositoryImpl implements AuthRepository {
   final ApiService _apiService;
 
   AuthRepositoryImpl(this._apiService);
 
   @override
-  Future<Map<String, dynamic>> userLogin(
-    String username,
-    String password,
-  ) async {
+  Future<Map<String, dynamic>> userLogin(String email, String password) async {
     final response = await _apiService.post(
-      ApiUrl.baseUrl + ApiUrl.userLogin,
-      data: {'email': username, 'password': password},
+      ApiUrl.userLogin,
+      data: {'email': email, 'password': password},
     );
     return response as Map<String, dynamic>;
   }
 
   @override
-  Future<void> refreshToken() async {
-    throw UnimplementedError('refreshToken() has not been implemented');
-  }
-
-  @override
-  Future<void> changePassword(String oldPassword, String newPassword) async {
-    throw UnimplementedError('changePassword() has not been implemented');
-  }
-
-  @override
   Future<Map<String, dynamic>> institutionLogin(
-    String username,
+    String email,
     String password,
   ) async {
     final response = await _apiService.post(
-      ApiUrl.baseUrl + ApiUrl.institutionLogin,
-      data: {'email': username, 'password': password},
+      ApiUrl.institutionLogin,
+      data: {'email': email, 'password': password},
     );
     return response as Map<String, dynamic>;
   }

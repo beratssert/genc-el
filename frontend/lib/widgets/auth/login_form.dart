@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../repositories/auth_repo.dart';
+import '../../services/storage_service.dart';
 import '../../screens/auth/institution_login_screen.dart';
 import '../../screens/elderly/elderly_home_screen.dart';
 import '../../screens/student/student_home_screen.dart';
@@ -6,19 +9,21 @@ import '../../widgets/custom_text_field.dart';
 
 /// Kullanıcı tipini (ELDERLY / STUDENT) seçip
 /// e-posta ve şifre bilgileriyle giriş yapılan form.
-class LoginForm extends StatefulWidget {
+/// Backend'e gerçek API çağrısı yapar.
+class LoginForm extends ConsumerStatefulWidget {
   const LoginForm({super.key});
 
   @override
-  State<LoginForm> createState() => _LoginFormState();
+  ConsumerState<LoginForm> createState() => _LoginFormState();
 }
 
-class _LoginFormState extends State<LoginForm> {
+class _LoginFormState extends ConsumerState<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
   String _selectedUserType = 'elderly'; // 'elderly' | 'student'
 
   @override
@@ -28,75 +33,97 @@ class _LoginFormState extends State<LoginForm> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
 
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (_selectedUserType == 'elderly') {
-      if (email == 'yasli@test.com' && password == '123456') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Yaşlı olarak giriş yapılıyor…'),
-            backgroundColor: const Color(0xFF16A34A),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+    try {
+      final authRepo = ref.read(authRepositoryProvider);
+      final storageService = ref.read(storageServiceProvider);
+
+      // Backend'e login isteği gönder
+      final response = await authRepo.userLogin(email, password);
+
+      // Token ve bilgileri kaydet
+      final token = response['token'] as String;
+      final role = response['role'] as String;
+      final responseEmail = response['email'] as String;
+
+      await storageService.saveToken(token);
+      await storageService.saveRole(role);
+      await storageService.saveEmail(responseEmail);
+
+      if (!mounted) return;
+
+      // Rol kontrolü — seçilen tip ile backend'den dönen rol uyumlu mu?
+      if (_selectedUserType == 'elderly' && role == 'ELDERLY') {
+        _showSuccessAndNavigate(
+          'Yaşlı olarak giriş yapılıyor…',
+          const Color(0xFF16A34A),
+          const ElderlyHomeScreen(),
         );
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const ElderlyHomeScreen()),
-          (route) => false,
+      } else if (_selectedUserType == 'student' && role == 'STUDENT') {
+        _showSuccessAndNavigate(
+          'Öğrenci olarak giriş yapılıyor…',
+          Colors.blue,
+          const StudentHomeScreen(),
+        );
+      } else if (role == 'ELDERLY') {
+        // Kullanıcı doğru tipte giriş yapmadıysa (ama hesap geçerli), yönlendir
+        _showSuccessAndNavigate(
+          'Yaşlı olarak giriş yapılıyor…',
+          const Color(0xFF16A34A),
+          const ElderlyHomeScreen(),
+        );
+      } else if (role == 'STUDENT') {
+        _showSuccessAndNavigate(
+          'Öğrenci olarak giriş yapılıyor…',
+          Colors.blue,
+          const StudentHomeScreen(),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Hatalı e-posta veya şifre! Lütfen tekrar deneyin.',
-            ),
-            backgroundColor: Colors.red.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        _showError('Bu hesap tipi bu ekrandan giriş yapamaz.');
       }
-    } else {
-      if (email == 'ogrenci@test.com' && password == '123456') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Öğrenci olarak giriş yapılıyor…'),
-            backgroundColor: Colors.blue,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const StudentHomeScreen()),
-          (route) => false,
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Hatalı e-posta veya şifre! Lütfen tekrar deneyin.',
-            ),
-            backgroundColor: Colors.red.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+    } catch (e) {
+      if (!mounted) return;
+      _showError(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showSuccessAndNavigate(String message, Color color, Widget screen) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+      (route) => false,
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   @override
@@ -156,7 +183,7 @@ class _LoginFormState extends State<LoginForm> {
           ),
           const SizedBox(height: 28),
           FilledButton(
-            onPressed: _handleLogin,
+            onPressed: _isLoading ? null : _handleLogin,
             style: FilledButton.styleFrom(
               backgroundColor: _selectedUserType == 'elderly'
                   ? const Color(0xFF16A34A)
@@ -172,7 +199,16 @@ class _LoginFormState extends State<LoginForm> {
                 letterSpacing: 0.5,
               ),
             ),
-            child: const Text('Giriş Yap'),
+            child: _isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Giriş Yap'),
           ),
           const SizedBox(height: 16),
           TextButton(

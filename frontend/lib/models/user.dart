@@ -1,83 +1,86 @@
-//DB table
-// USER {
-//         Long id PK
-//         Long institution_id FK
-//         String role "ELDERLY, STUDENT, ADMIN"
-//         String first_name
-//         String last_name
-//         String phone_number
-//         String address
-//         Double latitude
-//         Double longitude
-//         Boolean is_active "Soft delete"
-//         String iban "For Students"
-//     }
-
+/// Backend UserRole enum (camelCase uyumlu)
 enum Role {
   ELDERLY,
   STUDENT,
-  INSTITUTION_ADMIN;
+  INSTITUTION_ADMIN,
+  SYSTEM_ADMIN;
 
   static Role fromString(String role) {
-    return Role.values.firstWhere((e) => e.name == role);
+    return Role.values.firstWhere(
+      (e) => e.name == role,
+      orElse: () => Role.ELDERLY,
+    );
   }
 }
 
+/// Backend `UserResponse` DTO ile birebir uyumlu model.
 class User {
   final String id;
-  final String institutionId;
+  final String? institutionId;
   final Role role;
   final String firstName;
   final String lastName;
-  final String phoneNumber;
-  final String address;
-  final double latitude;
-  final double longitude;
+  final String? phoneNumber;
+  final String? email;
+  final String? address;
+  final double? latitude;
+  final double? longitude;
   final bool isActive;
-  final String iban;
+  final String? iban;
+  final DateTime? createdAt;
 
   User({
     required this.id,
-    required this.institutionId,
+    this.institutionId,
     required this.role,
     required this.firstName,
     required this.lastName,
-    required this.phoneNumber,
-    required this.address,
-    required this.latitude,
-    required this.longitude,
-    required this.isActive,
-    required this.iban,
+    this.phoneNumber,
+    this.email,
+    this.address,
+    this.latitude,
+    this.longitude,
+    this.isActive = true,
+    this.iban,
+    this.createdAt,
   });
 
+  String get fullName => '$firstName $lastName';
+
+  /// Backend JSON camelCase formatına uygun parser.
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      institutionId: json['institution_id'],
-      role: Role.fromString(json['role']),
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      phoneNumber: json['phone_number'],
+      id: json['id']?.toString() ?? '',
+      institutionId: json['institutionId']?.toString(),
+      role: Role.fromString(json['role'] ?? 'ELDERLY'),
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      phoneNumber: json['phoneNumber'],
+      email: json['email'],
       address: json['address'],
-      latitude: json['latitude'],
-      longitude: json['longitude'],
-      isActive: json['is_active'],
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      isActive: json['isActive'] ?? true,
       iban: json['iban'],
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'institution_id': institutionId,
+      'institutionId': institutionId,
       'role': role.name,
-      'first_name': firstName,
-      'last_name': lastName,
-      'phone_number': phoneNumber,
+      'firstName': firstName,
+      'lastName': lastName,
+      'phoneNumber': phoneNumber,
+      'email': email,
       'address': address,
       'latitude': latitude,
       'longitude': longitude,
-      'is_active': isActive,
+      'isActive': isActive,
       'iban': iban,
     };
   }

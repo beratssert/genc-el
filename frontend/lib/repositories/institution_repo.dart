@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tdp_frontend/models/bursary_history.dart';
 import 'package:tdp_frontend/models/create_user_request.dart';
+import 'package:tdp_frontend/models/dashboard_stats.dart';
+import 'package:tdp_frontend/models/user.dart';
 import 'package:tdp_frontend/services/api_service.dart';
 import 'package:tdp_frontend/shared/api_url.dart';
 
@@ -9,98 +12,108 @@ final institutionRepoProvider = Provider<InstitutionRepo>((ref) {
   return InstitutionRepoImpl(apiService);
 });
 
-/// Abstract class defining the institution and administrative management repository interface.
+/// Abstract class defining the institution management repository interface.
 abstract class InstitutionRepo {
-  /// Adds a new user (Student or Elderly) - Admin operation.
-  Future<void> createUser(CreateUserRequest request);
+  /// Adds a new user (Student or Elderly) — Admin operation.
+  Future<User> createUser(CreateUserRequest request);
 
-  /// Lists users with optional filters like role or region - Admin operation.
-  Future<List<Map<String, dynamic>>> getUsers({String? role});
+  /// Lists users with optional role filter — Admin operation.
+  Future<List<User>> getUsers({String? role});
 
-  /// Updates user information.
-  Future<void> updateUser(String id, Map<String, dynamic> userData);
+  /// Gets dashboard statistics (Student or Institution Admin).
+  Future<DashboardStats> getDashboardStats();
 
-  /// Deactivates a user (Soft delete) - Admin operation.
-  Future<void> deleteUser(String id);
-
-  /// Gets general statistics for the institution.
-  Future<Map<String, dynamic>> getInstitutionStats();
-
-  /// Lists student bursary entitlements with optional date filters.
-  Future<List<Map<String, dynamic>>> getBursaries({
-    String? month,
-    String? year,
+  /// Lists bursary records for institution (INSTITUTION_ADMIN).
+  Future<List<BursaryHistory>> getBursaries({
+    required int year,
+    required int month,
   });
 
-  /// Triggers bursary calculation for a specific period.
-  Future<void> calculateBursary(String month, String year);
+  /// Triggers bursary calculation for a specific month.
+  Future<void> calculateBursary(int year, int month);
 
-  /// Marks a specific bursary entitlement as paid.
-  Future<void> markBursaryAsPaid(String bursaryId);
+  /// Marks a specific bursary as paid.
+  Future<BursaryHistory> markBursaryAsPaid(String bursaryId, {String? transactionReference});
 }
 
-/// Concrete implementation of [InstitutionRepo] with placeholder logic.
+/// Concrete implementation connected to the Spring Boot backend.
 class InstitutionRepoImpl implements InstitutionRepo {
   final ApiService _apiService;
 
   InstitutionRepoImpl(this._apiService);
 
   @override
-  Future<void> createUser(CreateUserRequest request) async {
-    await _apiService.post(
-      ApiUrl.baseUrl + ApiUrl.users,
+  Future<User> createUser(CreateUserRequest request) async {
+    final response = await _apiService.post(
+      ApiUrl.users,
       data: request.toJson(),
     );
+    return User.fromJson(response as Map<String, dynamic>);
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getUsers({String? role}) async {
+  Future<List<User>> getUsers({String? role}) async {
     final Map<String, dynamic> queryParameters = {};
     if (role != null && role.isNotEmpty) {
       queryParameters['role'] = role;
     }
 
     final response = await _apiService.get(
-      ApiUrl.baseUrl + ApiUrl.users,
+      ApiUrl.users,
       queryParameters: queryParameters,
     );
 
     if (response is List) {
-      return List<Map<String, dynamic>>.from(response);
+      return response
+          .map((json) => User.fromJson(json as Map<String, dynamic>))
+          .toList();
     }
     return [];
   }
 
   @override
-  Future<void> deleteUser(String id) async {
-    throw UnimplementedError('deleteUser() has not been implemented');
+  Future<DashboardStats> getDashboardStats() async {
+    final response = await _apiService.get(ApiUrl.dashboardStats);
+    return DashboardStats.fromJson(response as Map<String, dynamic>);
   }
 
   @override
-  Future<Map<String, dynamic>> getInstitutionStats() async {
-    throw UnimplementedError('getInstitutionStats() has not been implemented');
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> getBursaries({
-    String? month,
-    String? year,
+  Future<List<BursaryHistory>> getBursaries({
+    required int year,
+    required int month,
   }) async {
-    throw UnimplementedError('getBursaries() has not been implemented');
+    final response = await _apiService.get(
+      ApiUrl.institutionBursaries,
+      queryParameters: {'year': year, 'month': month},
+    );
+
+    if (response is List) {
+      return response
+          .map((json) => BursaryHistory.fromJson(json as Map<String, dynamic>))
+          .toList();
+    }
+    return [];
   }
 
   @override
-  Future<void> calculateBursary(String month, String year) async {
-    throw UnimplementedError('calculateBursary() has not been implemented');
+  Future<void> calculateBursary(int year, int month) async {
+    await _apiService.post(
+      ApiUrl.calculateBursaries,
+      data: {'year': year, 'month': month},
+    );
   }
 
   @override
-  Future<void> markBursaryAsPaid(String bursaryId) async {
-    throw UnimplementedError('markBursaryAsPaid() has not been implemented');
-  }
-
-  @override
-  Future<void> updateUser(String id, Map<String, dynamic> userData) {
-    throw UnimplementedError('updateUser() has not been implemented');
+  Future<BursaryHistory> markBursaryAsPaid(
+    String bursaryId, {
+    String? transactionReference,
+  }) async {
+    final response = await _apiService.put(
+      ApiUrl.payBursary(bursaryId),
+      data: transactionReference != null
+          ? {'transactionReference': transactionReference}
+          : null,
+    );
+    return BursaryHistory.fromJson(response as Map<String, dynamic>);
   }
 }

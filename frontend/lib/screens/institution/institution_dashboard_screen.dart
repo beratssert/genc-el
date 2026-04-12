@@ -1,49 +1,70 @@
 import 'package:flutter/material.dart';
-import 'package:tdp_frontend/core/repositories/mock_user_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/providers.dart';
+import '../../models/user.dart';
+import '../../services/storage_service.dart';
+import '../../screens/auth/login_screen.dart';
 import 'create_user_screen.dart';
 import 'user_list_screen.dart';
 
-class InstitutionDashboardScreen extends StatefulWidget {
+class InstitutionDashboardScreen extends ConsumerStatefulWidget {
   const InstitutionDashboardScreen({super.key});
 
   @override
-  State<InstitutionDashboardScreen> createState() =>
+  ConsumerState<InstitutionDashboardScreen> createState() =>
       _InstitutionDashboardScreenState();
 }
 
 class _InstitutionDashboardScreenState
-    extends State<InstitutionDashboardScreen> {
-  // Mock stats
-  final Map<String, dynamic> stats = const {
-    'totalElderly': 45,
-    'totalStudents': 78,
-    'activeOrders': 12,
-    'completedThisMonth': 234,
-  };
+    extends ConsumerState<InstitutionDashboardScreen> {
+  Future<void> _logout() async {
+    final storageService = ref.read(storageServiceProvider);
+    await storageService.clearAll();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+          builder: (_) => LoginScreen(selectedType: 'elderly')),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final userAsync = ref.watch(currentUserProvider);
+    final statsAsync = ref.watch(dashboardStatsProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Kurum Paneli',
                   style: TextStyle(
-                    fontSize: 20, // text-xl
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF111827), // gray-900
+                    color: Color(0xFF111827),
                   ),
                 ),
-                Text(
-                  'Ankara Büyükşehir Belediyesi',
-                  style: TextStyle(
-                    fontSize: 14, // text-sm
-                    color: Color(0xFF4B5563), // gray-600
+                userAsync.when(
+                  data: (user) => Text(
+                    '${user.firstName} ${user.lastName}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF4B5563),
+                    ),
+                  ),
+                  loading: () => const Text(
+                    'Yükleniyor…',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
+                  ),
+                  error: (_, __) => const Text(
+                    'Kurum Yöneticisi',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF4B5563)),
                   ),
                 ),
               ],
@@ -53,8 +74,15 @@ class _InstitutionDashboardScreenState
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Çıkış Yap',
+            color: const Color(0xFF6B7280),
+          ),
+        ],
       ),
-      // Gradient background: from-indigo-50 to-purple-100
       body: Center(
         child: Container(
           decoration: const BoxDecoration(
@@ -69,47 +97,69 @@ class _InstitutionDashboardScreenState
           ),
           child: Column(
             children: [
-              // Main Content
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0), // p-4
+                  padding: const EdgeInsets.all(16.0),
                   child: Center(
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: 448,
-                      ), // max-w-md
+                      constraints: const BoxConstraints(maxWidth: 448),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           // Stats Cards Grid
-                          GridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisSpacing: 16, // gap-4
-                            mainAxisSpacing: 16, // gap-4
-                            childAspectRatio: 1.5,
-                            children: [
-                              _buildStatCard(
-                                stats['totalElderly'].toString(),
-                                'Yaşlı/Engelli',
-                                const Color(0xFF4F46E5), // indigo-600
+                          statsAsync.when(
+                            data: (stats) => GridView.count(
+                              crossAxisCount: 2,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 1.5,
+                              children: [
+                                _buildStatCard(
+                                  (stats.totalElderlies ?? 0).toString(),
+                                  'Yaşlı/Engelli',
+                                  const Color(0xFF4F46E5),
+                                ),
+                                _buildStatCard(
+                                  (stats.totalStudents ?? 0).toString(),
+                                  'Öğrenci',
+                                  const Color(0xFF9333EA),
+                                ),
+                                _buildStatCard(
+                                  (stats.totalTasksThisMonth ?? 0).toString(),
+                                  'Bu Ay Tamamlanan',
+                                  const Color(0xFF2563EB),
+                                ),
+                              ],
+                            ),
+                            loading: () => GridView.count(
+                              crossAxisCount: 2,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 1.5,
+                              children: [
+                                _buildStatCard('…', 'Yaşlı/Engelli',
+                                    const Color(0xFF4F46E5)),
+                                _buildStatCard('…', 'Öğrenci',
+                                    const Color(0xFF9333EA)),
+                                _buildStatCard('…', 'Bu Ay Tamamlanan',
+                                    const Color(0xFF2563EB)),
+                              ],
+                            ),
+                            error: (e, _) => Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(
+                                'İstatistikler yüklenemedi: $e',
+                                style: TextStyle(color: Colors.red.shade600),
                               ),
-                              _buildStatCard(
-                                stats['totalStudents'].toString(),
-                                'Öğrenci',
-                                const Color(0xFF9333EA), // purple-600
-                              ),
-
-                              _buildStatCard(
-                                stats['completedThisMonth'].toString(),
-                                'Bu Ay Tamamlanan',
-                                const Color(0xFF2563EB), // blue-600
-                              ),
-                            ],
+                            ),
                           ),
-                          const SizedBox(height: 16), // space-y-4
-                          // Main Actions
+                          const SizedBox(height: 16),
+
+                          // Kullanıcı Yönetimi
                           Card(
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -117,7 +167,7 @@ class _InstitutionDashboardScreenState
                             ),
                             color: Colors.white,
                             child: Padding(
-                              padding: const EdgeInsets.all(24.0), // p-6
+                              padding: const EdgeInsets.all(24.0),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -125,16 +175,15 @@ class _InstitutionDashboardScreenState
                                     'Kullanıcı Yönetimi',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      fontWeight:
-                                          FontWeight.w600, // font-semibold
-                                      color: Color(0xFF111827), // gray-900
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF111827),
                                     ),
                                   ),
-                                  const SizedBox(height: 16), // mb-4
+                                  const SizedBox(height: 16),
                                   _buildActionButton(
                                     context,
                                     'Yeni Kullanıcı Ekle',
-                                    Icons.person_add_outlined, // UserPlus
+                                    Icons.person_add_outlined,
                                     () {
                                       Navigator.push(
                                         context,
@@ -143,18 +192,18 @@ class _InstitutionDashboardScreenState
                                               const CreateUserScreen(),
                                         ),
                                       ).then((_) {
-                                        setState(
-                                          () {},
-                                        ); // Tabloyu güncellemek için
+                                        // Stats'ı yeniden yükle
+                                        ref.invalidate(dashboardStatsProvider);
+                                        ref.invalidate(currentUserProvider);
                                       });
                                     },
                                     isPrimary: true,
                                   ),
-                                  const SizedBox(height: 12), // space-y-3
+                                  const SizedBox(height: 12),
                                   _buildActionButton(
                                     context,
                                     'Kullanıcı Listesi',
-                                    Icons.people_outline, // Users
+                                    Icons.people_outline,
                                     () {
                                       Navigator.push(
                                         context,
@@ -172,7 +221,7 @@ class _InstitutionDashboardScreenState
                           ),
                           const SizedBox(height: 16),
 
-                          // Quick Access (Recent Users)
+                          // Yakında eklenecek son kullanıcılar (backend'den)
                           Card(
                             elevation: 0,
                             shape: RoundedRectangleBorder(
@@ -180,7 +229,7 @@ class _InstitutionDashboardScreenState
                             ),
                             color: Colors.white,
                             child: Padding(
-                              padding: const EdgeInsets.all(24.0), // p-6
+                              padding: const EdgeInsets.all(24.0),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -193,7 +242,7 @@ class _InstitutionDashboardScreenState
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  ..._buildRecentUsers(),
+                                  _buildRecentUsersFromBackend(),
                                 ],
                               ),
                             ),
@@ -211,30 +260,121 @@ class _InstitutionDashboardScreenState
     );
   }
 
+  Widget _buildRecentUsersFromBackend() {
+    final usersAsync = ref.watch(institutionUsersProvider(null));
+    return usersAsync.when(
+      data: (users) {
+        if (users.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Henüz kullanıcı eklenmemiş.',
+                style: TextStyle(color: Color(0xFF6B7280)),
+              ),
+            ),
+          );
+        }
+        final recent = users.take(3).toList();
+        return Column(
+          children: recent.asMap().entries.map((entry) {
+            final user = entry.value;
+            final isLast = entry.key == recent.length - 1;
+            return Container(
+              margin: EdgeInsets.only(bottom: isLast ? 0 : 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: user.role == Role.STUDENT
+                          ? const Color(0xFFDBEAFE)
+                          : const Color(0xFFD1FAE5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      user.role == Role.STUDENT
+                          ? Icons.school
+                          : Icons.person,
+                      size: 20,
+                      color: user.role == Role.STUDENT
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFF16A34A),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.fullName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF111827),
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          '${user.role == Role.STUDENT ? "Öğrenci" : "Yaşlı/Engelli"} • ${user.email ?? ""}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF4B5563),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          'Kullanıcılar yüklenemedi.',
+          style: TextStyle(color: Colors.red.shade600),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatCard(String value, String label, Color valueColor) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: Colors.white,
       child: Padding(
-        padding: const EdgeInsets.all(16.0), // p-4
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               value,
               style: TextStyle(
-                fontSize: 30, // text-3xl
+                fontSize: 30,
                 fontWeight: FontWeight.bold,
                 color: valueColor,
               ),
             ),
-            const SizedBox(height: 4), // mt-1
+            const SizedBox(height: 4),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 14, // text-sm
-                color: Color(0xFF4B5563), // gray-600
+                fontSize: 14,
+                color: Color(0xFF4B5563),
               ),
               textAlign: TextAlign.center,
             ),
@@ -254,7 +394,7 @@ class _InstitutionDashboardScreenState
     if (isPrimary) {
       return SizedBox(
         width: double.infinity,
-        height: 56, // h-14
+        height: 56,
         child: ElevatedButton.icon(
           onPressed: onPressed,
           icon: Icon(icon, size: 24),
@@ -263,9 +403,7 @@ class _InstitutionDashboardScreenState
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(
-              0xFF4F46E5,
-            ), // matching typical shadcn primary
+            backgroundColor: const Color(0xFF4F46E5),
             foregroundColor: Colors.white,
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -279,10 +417,10 @@ class _InstitutionDashboardScreenState
     } else {
       return SizedBox(
         width: double.infinity,
-        height: 56, // h-14
+        height: 56,
         child: OutlinedButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 24, color: Color(0xFF4F46E5)),
+          icon: Icon(icon, size: 24, color: const Color(0xFF4F46E5)),
           label: Text(
             label,
             style: const TextStyle(
@@ -292,10 +430,10 @@ class _InstitutionDashboardScreenState
             ),
           ),
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF111827), // gray-900
+            foregroundColor: const Color(0xFF111827),
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            side: const BorderSide(color: Color(0xFF4F46E5)), // gray-200
+            side: const BorderSide(color: Color(0xFF4F46E5)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -303,68 +441,5 @@ class _InstitutionDashboardScreenState
         ),
       );
     }
-  }
-
-  List<Widget> _buildRecentUsers() {
-    final MockUserRepository userRepo = MockUserRepository();
-    final users = userRepo.recentUsers.take(3).toList();
-
-    List<Widget> userWidgets = [];
-    for (int i = 0; i < users.length; i++) {
-      final user = users[i];
-      userWidgets.add(
-        Container(
-          margin: EdgeInsets.only(
-            bottom: i == users.length - 1 ? 0 : 12,
-          ), // space-y-3
-          padding: const EdgeInsets.all(12), // p-3
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB), // bg-gray-50
-            borderRadius: BorderRadius.circular(8), // rounded-lg
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40, // w-10
-                height: 40, // h-10
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE0E7FF), // bg-indigo-100
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.person, // UserIcon
-                  size: 20, // h-5 w-5
-                  color: Color(0xFF4F46E5), // text-indigo-600
-                ),
-              ),
-              const SizedBox(width: 12), // gap-3 equivalent
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500, // font-medium
-                        color: Color(0xFF111827), // text-gray-900
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      '${user['type']} • ${user['date']}',
-                      style: const TextStyle(
-                        fontSize: 14, // text-sm
-                        color: Color(0xFF4B5563), // text-gray-600
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return userWidgets;
   }
 }

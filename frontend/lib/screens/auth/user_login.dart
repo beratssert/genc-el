@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tdp_frontend/models/user.dart';
 import 'package:tdp_frontend/repositories/auth_repo.dart';
 import 'package:tdp_frontend/screens/auth/institution_login.dart';
-import 'package:tdp_frontend/screens/beneficiary/beneficiary_main_screen.dart';
+import 'package:tdp_frontend/screens/elderly/elderly_home_screen.dart';
 import 'package:tdp_frontend/screens/student/student_screen.dart';
 import 'package:tdp_frontend/services/storage_service.dart';
 
@@ -75,9 +75,7 @@ class _UserLoginState extends ConsumerState<UserLogin> {
         );
       } else if (roleString == Role.ELDERLY.name) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const BeneficiaryMainScreen(),
-          ),
+          MaterialPageRoute(builder: (context) => const ElderlyHomeScreen()),
         );
       }
     } on Exception catch (error) {

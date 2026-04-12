@@ -159,6 +159,40 @@ public class TaskIntegrationTest {
                                 .andExpect(jsonPath("$.length()").value(1));
         }
 
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void getMyActiveTask_Success() throws Exception {
+                TaskResponse activeTask = TaskResponse.builder()
+                                .id(UUID.randomUUID())
+                                .status("IN_PROGRESS")
+                                .build();
+
+                when(taskService.getMyActiveTask("student@test.com")).thenReturn(java.util.Optional.of(activeTask));
+
+                mockMvc.perform(get("/api/v1/tasks/my-active-task")
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+        }
+
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void getMyActiveTask_NoContent_WhenNoActiveTask() throws Exception {
+                when(taskService.getMyActiveTask("student@test.com")).thenReturn(java.util.Optional.empty());
+
+                mockMvc.perform(get("/api/v1/tasks/my-active-task")
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
+        void getMyActiveTask_ForbiddenForElderly() throws Exception {
+                mockMvc.perform(get("/api/v1/tasks/my-active-task")
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isForbidden());
+        }
+
         // --- ASSIGN TASK ---
 
         @Test

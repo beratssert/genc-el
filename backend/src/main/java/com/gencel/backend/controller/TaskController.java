@@ -73,6 +73,15 @@ public class TaskController {
                 return ResponseEntity.ok(taskService.getMyTasks(authentication.getName()));
         }
 
+        @Operation(summary = "Aktif Görevimi Getir", description = "Öğrencinin aktif görevini (ASSIGNED veya IN_PROGRESS) döner.")
+        @GetMapping("/my-active-task")
+        @PreAuthorize("hasRole('STUDENT')")
+        public ResponseEntity<TaskResponse> getMyActiveTask(@Parameter(hidden = true) Authentication authentication) {
+                return taskService.getMyActiveTask(authentication.getName())
+                                .map(ResponseEntity::ok)
+                                .orElseGet(() -> ResponseEntity.noContent().build());
+        }
+
         @Operation(summary = "Görevi Üzerine Al (Kabul Et)", description = "Bir öğrencinin bekleyen ('PENDING') bir görevi kabul etmesini sağlar. Görev durumu 'ASSIGNED' olur.")
         @PutMapping("/{taskId}/assign")
         public ResponseEntity<TaskResponse> assignTask(

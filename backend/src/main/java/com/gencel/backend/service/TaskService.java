@@ -20,7 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -118,6 +120,21 @@ public class TaskService {
         }
 
         return tasks.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<TaskResponse> getMyActiveTask(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!User.UserRole.STUDENT.equals(user.getRole())) {
+            throw new UnauthorizedActionException("Only STUDENT users can view active task");
+        }
+
+        return taskRepository.findFirstByVolunteerIdAndStatusInOrderByUpdatedAtDesc(
+                user.getId(),
+                Arrays.asList(Task.TaskStatus.ASSIGNED, Task.TaskStatus.IN_PROGRESS))
+                .map(this::mapToResponse);
     }
 
     @Transactional

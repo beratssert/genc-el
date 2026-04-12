@@ -238,6 +238,45 @@ public class TaskServiceTest {
         assertEquals("User not found", exception.getMessage());
     }
 
+    @Test
+    void getMyActiveTask_Success() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.IN_PROGRESS);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findFirstByVolunteerIdAndStatusInOrderByUpdatedAtDesc(
+                eq(studentUser.getId()), anyList()))
+                .thenReturn(Optional.of(task));
+
+        Optional<TaskResponse> response = taskService.getMyActiveTask(studentUser.getEmail());
+
+        assertTrue(response.isPresent());
+        assertEquals(task.getId(), response.get().getId());
+        assertEquals(Task.TaskStatus.IN_PROGRESS.name(), response.get().getStatus());
+    }
+
+    @Test
+    void getMyActiveTask_ReturnsEmpty_WhenNoActiveTask() {
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findFirstByVolunteerIdAndStatusInOrderByUpdatedAtDesc(
+                eq(studentUser.getId()), anyList()))
+                .thenReturn(Optional.empty());
+
+        Optional<TaskResponse> response = taskService.getMyActiveTask(studentUser.getEmail());
+
+        assertTrue(response.isEmpty());
+    }
+
+    @Test
+    void getMyActiveTask_ThrowsWhenNotStudent() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.getMyActiveTask(elderlyUser.getEmail()));
+
+        assertEquals("Only STUDENT users can view active task", exception.getMessage());
+    }
+
     // --- assignTask Tests ---
 
     @Test

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -23,6 +24,10 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
         @EntityGraph(attributePaths = { "requester", "volunteer" })
         List<Task> findByVolunteerId(UUID volunteerId);
+
+        @EntityGraph(attributePaths = { "requester", "volunteer" })
+        Optional<Task> findFirstByVolunteerIdAndStatusInOrderByUpdatedAtDesc(UUID volunteerId,
+                        List<Task.TaskStatus> statuses);
 
         @Query(value = """
                         SELECT t.*

@@ -6,7 +6,7 @@ import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
 
 import 'package:tdp_frontend/core/providers.dart';
-import 'package:tdp_frontend/models/user.dart';
+
 import 'package:tdp_frontend/services/storage_service.dart';
 import 'package:tdp_frontend/shared/api_url.dart';
 
@@ -45,7 +45,8 @@ class WebSocketService {
         stompConnectHeaders: {'Authorization': 'Bearer $token'},
         webSocketConnectHeaders: {'Authorization': 'Bearer $token'},
         onDisconnect: (frame) => debugPrint('WebSocket Disconnected'),
-        onStompError: (frame) => debugPrint('WebSocket STOMP Error: ${frame.body}'),
+        onStompError: (frame) =>
+            debugPrint('WebSocket STOMP Error: ${frame.body}'),
       ),
     );
 
@@ -88,9 +89,9 @@ class WebSocketService {
     if (body == null) return;
     try {
       final data = jsonDecode(body);
-      
+
       // Backend uses 'eventType' field name in TaskRealtimeEvent class
-      final eventType = data['eventType']; 
+      final eventType = data['eventType'];
       debugPrint('WebSocket Event Parsing: Event Type = $eventType');
 
       // Refresh relevant providers to trigger UI updates
@@ -98,7 +99,7 @@ class WebSocketService {
       _ref.invalidate(pendingTasksProvider);
       _ref.invalidate(myTasksProvider);
       _ref.invalidate(dashboardStatsProvider);
-      
+
       // Also potentially invalidate profile if name/points changed
       // _ref.invalidate(currentUserProvider);
     } catch (e) {

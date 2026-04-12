@@ -39,7 +39,10 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 
@@ -57,7 +60,10 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 
@@ -103,7 +109,10 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 
@@ -149,7 +158,10 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 
@@ -253,7 +265,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                     isTaskActive: false,
                     onToggle: (v) {},
                   ),
-                  error: (_, __) => AvailabilityCard(
+                  error: (_, _) => AvailabilityCard(
                     isAvailable: _isAvailable,
                     isTaskActive: false,
                     onToggle: (v) {},
@@ -294,7 +306,8 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                 child: CircularProgressIndicator(),
                               ),
                             ),
-                            error: (err, _) => Center(child: Text('Hata: $err')),
+                            error: (err, _) =>
+                                Center(child: Text('Hata: $err')),
                           ),
 
                           // Bekleyen görevler
@@ -302,18 +315,27 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                             data: (pendingTasks) {
                               // Sadece aktif görev yokken ve müsaitken göster
                               final hasActiveTask = myTasksAsync.maybeWhen(
-                                data: (tasks) => tasks.any((t) =>
-                                    t.status != TaskStatus.COMPLETED &&
-                                    t.status != TaskStatus.CANCELLED),
+                                data: (tasks) => tasks.any(
+                                  (t) =>
+                                      t.status != TaskStatus.COMPLETED &&
+                                      t.status != TaskStatus.CANCELLED,
+                                ),
                                 orElse: () => false,
                               );
 
-                              if (!hasActiveTask && _isAvailable && pendingTasks.isNotEmpty) {
+                              if (!hasActiveTask &&
+                                  _isAvailable &&
+                                  pendingTasks.isNotEmpty) {
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Padding(
-                                      padding: EdgeInsets.fromLTRB(0, 24, 0, 12),
+                                      padding: EdgeInsets.fromLTRB(
+                                        0,
+                                        24,
+                                        0,
+                                        12,
+                                      ),
                                       child: Text(
                                         '📋 Bekleyen Siparişler',
                                         style: TextStyle(
@@ -323,14 +345,16 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                         ),
                                       ),
                                     ),
-                                    ...pendingTasks.map((t) => _buildPendingTaskCard(t)),
+                                    ...pendingTasks.map(
+                                      (t) => _buildPendingTaskCard(t),
+                                    ),
                                   ],
                                 );
                               }
                               return const SizedBox.shrink();
                             },
                             loading: () => const SizedBox.shrink(),
-                            error: (_, __) => const SizedBox.shrink(),
+                            error: (_, _) => const SizedBox.shrink(),
                           ),
                         ],
                       ),
@@ -387,7 +411,10 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
               if (task.createdAt != null)
                 Text(
                   _formatTime(task.createdAt!),
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF94A3B8),
+                  ),
                 ),
             ],
           ),

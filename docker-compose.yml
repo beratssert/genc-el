@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -29,6 +29,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: genc-el-redis
+    command: ["redis-server", "--notify-keyspace-events", "Ex"]
     ports:
       - "6379:6379"
     networks:

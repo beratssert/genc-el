@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,9 @@ public class TaskServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private TaskAssignmentRedisService taskAssignmentRedisService;
+
     @InjectMocks
     private TaskService taskService;
 
@@ -50,6 +54,8 @@ public class TaskServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(taskService, "taskAssignmentRedisService", taskAssignmentRedisService);
+
         elderlyUser = User.builder()
                 .id(UUID.randomUUID())
                 .email("elderly@test.com")
@@ -168,8 +174,8 @@ public class TaskServiceTest {
     void getMyTasks_ThrowsException_WhenUserNotFound() {
         when(userRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                taskService.getMyTasks("notfound@test.com"));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> taskService.getMyTasks("notfound@test.com"));
 
         assertEquals("User not found", exception.getMessage());
     }
@@ -188,7 +194,9 @@ public class TaskServiceTest {
                 .note(task.getNote())
                 .isActive(true)
                 .build();
-        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task), Optional.of(assignedTask));
+        when(taskRepository.findById(task.getId()))
+                .thenReturn(Optional.of(task))
+                .thenReturn(Optional.of(assignedTask));
         when(taskRepository.assignIfPending(task.getId(), studentUser)).thenReturn(1);
 
         TaskResponse response = taskService.assignTask(task.getId(), studentUser.getEmail());
@@ -196,6 +204,7 @@ public class TaskServiceTest {
         assertNotNull(response);
         assertEquals(Task.TaskStatus.ASSIGNED.name(), response.getStatus());
         assertEquals(studentUser.getId(), response.getVolunteerId());
+        verify(taskAssignmentRedisService).prepareAssignment(any(Task.class), eq(studentUser));
         verify(taskLogRepository).save(any(TaskLog.class));
     }
 
@@ -203,8 +212,8 @@ public class TaskServiceTest {
     void assignTask_ThrowsException_WhenUserNotFound() {
         when(userRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () ->
-                taskService.assignTask(task.getId(), "notfound@test.com"));
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> taskService.assignTask(task.getId(), "notfound@test.com"));
 
         assertEquals("User not found", exception.getMessage());
         verify(taskRepository, never()).save(any(Task.class));
@@ -214,8 +223,8 @@ public class TaskServiceTest {
     void assignTask_ThrowsException_WhenUserIsNotStudent() {
         when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
 
-        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class, () ->
-                taskService.assignTask(task.getId(), elderlyUser.getEmail()));
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.assignTask(task.getId(), elderlyUser.getEmail()));
 
         assertEquals("Only STUDENT users can accept tasks", exception.getMessage());
         verify(taskRepository, never()).save(any(Task.class));
@@ -226,8 +235,8 @@ public class TaskServiceTest {
         when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
         when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
 
-        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class, () ->
-                taskService.assignTask(task.getId(), studentUser.getEmail()));
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.assignTask(task.getId(), studentUser.getEmail()));
 
         assertEquals("Task not found", exception.getMessage());
         verify(taskRepository, never()).save(any(Task.class));
@@ -245,6 +254,141 @@ public class TaskServiceTest {
 
         assertEquals("Task is not in PENDING status", exception.getMessage());
         verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    // --- rejectTask Tests ---
+
+    @Test
+    void rejectTask_Success() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+        User nextStudent = User.builder()
+                .id(UUID.randomUUID())
+                .email("next@test.com")
+                .role(User.UserRole.STUDENT)
+                .build();
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())).thenReturn(Optional.of(nextStudent));
+
+        TaskResponse response = taskService.rejectTask(task.getId(), studentUser.getEmail());
+
+        assertNotNull(response);
+        assertEquals(Task.TaskStatus.ASSIGNED.name(), response.getStatus());
+        assertEquals(nextStudent.getId(), response.getVolunteerId());
+        verify(taskRepository, atLeastOnce()).save(any(Task.class));
+        verify(taskAssignmentRedisService).clearPendingAssignment(task.getId());
+        verify(taskAssignmentRedisService).updatePendingAssignment(task.getId(), nextStudent.getId());
+        verify(taskLogRepository, atLeast(2)).save(any(TaskLog.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenUserNotFound() {
+        when(userRepository.findByEmail("notfound@test.com")).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> taskService.rejectTask(task.getId(), "notfound@test.com"));
+
+        assertEquals("User not found", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenUserIsNotStudent() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.rejectTask(task.getId(), elderlyUser.getEmail()));
+
+        assertEquals("Only STUDENT users can reject tasks", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenTaskNotFound() {
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.empty());
+
+        TaskNotFoundException exception = assertThrows(TaskNotFoundException.class,
+                () -> taskService.rejectTask(task.getId(), studentUser.getEmail()));
+
+        assertEquals("Task not found", exception.getMessage());
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenTaskIsNotAssigned() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.PENDING);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        InvalidTaskStateException exception = assertThrows(InvalidTaskStateException.class,
+                () -> taskService.rejectTask(task.getId(), studentUser.getEmail()));
+
+        assertEquals("Task is not in ASSIGNED status", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void rejectTask_ThrowsException_WhenTaskAssignedToAnotherStudent() {
+        User anotherStudent = User.builder()
+                .id(UUID.randomUUID())
+                .email("another@test.com")
+                .role(User.UserRole.STUDENT)
+                .build();
+        task.setVolunteer(anotherStudent);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.rejectTask(task.getId(), studentUser.getEmail()));
+
+        assertEquals("You are not assigned to this task", exception.getMessage());
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void handleAssignmentTimeout_ReassignsToNextAvailableStudent() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+        User nextStudent = User.builder()
+                .id(UUID.randomUUID())
+                .email("next@test.com")
+                .role(User.UserRole.STUDENT)
+                .build();
+
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())).thenReturn(Optional.of(nextStudent));
+
+        taskService.handleAssignmentTimeout(task.getId());
+
+        assertEquals(Task.TaskStatus.ASSIGNED, task.getStatus());
+        assertEquals(nextStudent, task.getVolunteer());
+        verify(taskAssignmentRedisService).updatePendingAssignment(task.getId(), nextStudent.getId());
+        verify(taskLogRepository, atLeastOnce()).save(any(TaskLog.class));
+    }
+
+    @Test
+    void handleAssignmentTimeout_CancelsWhenNoCandidateLeft() {
+        task.setVolunteer(studentUser);
+        task.setStatus(Task.TaskStatus.ASSIGNED);
+
+        when(taskRepository.findById(task.getId())).thenReturn(Optional.of(task));
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(taskAssignmentRedisService.pollNextAvailableCandidate(task.getId())).thenReturn(Optional.empty());
+
+        taskService.handleAssignmentTimeout(task.getId());
+
+        assertEquals(Task.TaskStatus.CANCELLED, task.getStatus());
+        assertNull(task.getVolunteer());
+        verify(taskAssignmentRedisService).clearCandidateQueue(task.getId());
+        verify(taskLogRepository, atLeastOnce()).save(any(TaskLog.class));
     }
 
     // --- startTask Tests ---

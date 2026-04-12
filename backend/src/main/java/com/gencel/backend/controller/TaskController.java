@@ -66,6 +66,14 @@ public class TaskController {
                 return ResponseEntity.ok(taskService.assignTask(taskId, authentication.getName()));
         }
 
+        @Operation(summary = "Görevi Reddet", description = "Görevi üstlenen öğrencinin görevi reddetmesini sağlar. Görev tekrar 'PENDING' durumuna döner ve başka öğrenciye yeniden atanabilir.")
+        @PutMapping("/{taskId}/reject")
+        public ResponseEntity<TaskResponse> rejectTask(
+                        @Parameter(description = "Reddedilecek görevin ID'si", required = true) @PathVariable UUID taskId,
+                        @Parameter(hidden = true) Authentication authentication) {
+                return ResponseEntity.ok(taskService.rejectTask(taskId, authentication.getName()));
+        }
+
         @Operation(summary = "Alışverişe Başla", description = "Öğrencinin yaşlıdan parayı alıp alışverişe başladığını bildirir. Görev durumu 'IN_PROGRESS' olur.")
         @PutMapping("/{taskId}/start")
         public ResponseEntity<TaskResponse> startTask(

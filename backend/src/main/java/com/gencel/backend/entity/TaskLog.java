@@ -42,6 +42,6 @@ public class TaskLog {
     private LocalDateTime timestamp;
 
     public enum TaskLogAction {
-        CREATED, ASSIGNED, SHOPPING_STARTED, DELIVERED, COMPLETED, CANCELLED
+        CREATED, ASSIGNED, REJECTED, SHOPPING_STARTED, DELIVERED, COMPLETED, CANCELLED
     }
 }

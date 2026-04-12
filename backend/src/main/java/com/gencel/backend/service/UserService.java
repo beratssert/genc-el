@@ -2,6 +2,7 @@ package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
+import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
@@ -183,6 +184,18 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         user.setFcmToken(request.getFcmToken().trim());
+        user = userRepository.save(user);
+        return mapToUserResponse(user);
+    }
+
+    @Transactional
+    public UserResponse updateMyLocation(String email, UpdateLocationRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
+
         user = userRepository.save(user);
         return mapToUserResponse(user);
     }

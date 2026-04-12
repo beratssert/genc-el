@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.LoginRequest;
+import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.User;
@@ -273,6 +274,23 @@ class UserControllerIntegrationTest {
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isBadRequest());
+                }
+
+                @Test
+                @DisplayName("PUT /me/location canlı konum bilgisini günceller")
+                void shouldUpdateMyLocation() throws Exception {
+                        UpdateLocationRequest request = UpdateLocationRequest.builder()
+                                        .latitude(39.9334)
+                                        .longitude(32.8597)
+                                        .build();
+
+                        mockMvc.perform(put("/api/v1/user/me/location")
+                                        .with(user(institutionAdmin.getEmail()).roles("INSTITUTION_ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)))
+                                        .andExpect(status().isOk())
+                                        .andExpect(jsonPath("$.latitude").value(39.9334))
+                                        .andExpect(jsonPath("$.longitude").value(32.8597));
                 }
 
                 @Test

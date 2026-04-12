@@ -19,6 +19,7 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 | `POST` | `/api/v1/institution` | Yeni kurum oluşturur. | SYSTEM_ADMIN |
 | `GET` | `/api/v1/institution` | Tüm kurumları listeler. | SYSTEM_ADMIN |
 | `GET` | `/api/v1/institution/{id}` | Kurum detayı getirir. | SYSTEM_ADMIN |
+| `GET` | `/api/v1/institution/me` | Kendi kurumunun detaylarını getirir. | INSTITUTION_ADMIN |
 | `PUT` | `/api/v1/institution/{id}` | Kurum bilgisini günceller. | SYSTEM_ADMIN |
 | `DELETE` | `/api/v1/institution/{id}` | Kurumu pasife alır. | SYSTEM_ADMIN |
 | `PUT` | `/api/v1/institution/me` | Kendi kurumunu günceller. | INSTITUTION_ADMIN |
@@ -32,6 +33,7 @@ Tüm endpointler `/api/v1` ön ekiyle başlar.
 | `GET` | `/api/v1/user` | Kurumdaki kullanıcıları listeler. | INSTITUTION_ADMIN |
 | `GET` | `/api/v1/user/me` | Giriş yapan kullanıcının profilini döner. | Authenticated |
 | `PUT` | `/api/v1/user/me` | Giriş yapan kullanıcının profilini günceller. | Authenticated |
+| `PUT` | `/api/v1/user/me/location` | Giriş yapan kullanıcının canlı konumunu günceller. | Authenticated |
 | `PUT` | `/api/v1/user/me/device-token` | FCM cihaz tokenını kaydeder/günceller. | Authenticated |
 | `DELETE` | `/api/v1/user/me` | Hesabı soft-delete yapar. | Authenticated |
 | `GET` | `/api/v1/user/nearby-students` | Yaşlı kullanıcı için yakın müsait öğrencileri listeler. | ELDERLY |

@@ -42,7 +42,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/user/login", "/api/v1/institution/login", "/api/v1/admin/login")
                         .permitAll()
                         .requestMatchers("/ws/**").permitAll()
-                        // Kurum yöneticisinin kendi kurumunu güncellemesi / silmesi
+                        // Kurum yöneticisinin kendi kurumunu görüntülemesi / güncellemesi / silmesi
+                        .requestMatchers(HttpMethod.GET, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/institution/me").hasRole("INSTITUTION_ADMIN")
                         // Institution CRUD sadece SYSTEM_ADMIN için

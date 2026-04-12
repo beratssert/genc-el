@@ -2,6 +2,7 @@ package com.gencel.backend.service;
 
 import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
+import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.Institution;
@@ -278,6 +279,39 @@ class UserServiceTest {
 
             assertThat(response.getFcmToken()).isEqualTo("token-123");
             verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("updateMyLocation kullanıcının konumunu günceller")
+        void shouldUpdateMyLocation() {
+            when(userRepository.findByEmail(institutionAdmin.getEmail())).thenReturn(Optional.of(institutionAdmin));
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateLocationRequest request = UpdateLocationRequest.builder()
+                    .latitude(39.9334)
+                    .longitude(32.8597)
+                    .build();
+
+            UserResponse response = userService.updateMyLocation(institutionAdmin.getEmail(), request);
+
+            assertThat(response.getLatitude()).isEqualTo(39.9334);
+            assertThat(response.getLongitude()).isEqualTo(32.8597);
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("updateMyLocation kullanıcı bulunamazsa exception fırlatır")
+        void shouldThrowWhenUserNotFoundOnUpdateLocation() {
+            when(userRepository.findByEmail("unknown@test.com")).thenReturn(Optional.empty());
+
+            UpdateLocationRequest request = UpdateLocationRequest.builder()
+                    .latitude(39.9)
+                    .longitude(32.8)
+                    .build();
+
+            assertThatThrownBy(() -> userService.updateMyLocation("unknown@test.com", request))
+                    .isInstanceOf(UserNotFoundException.class)
+                    .hasMessageContaining("User not found");
         }
 
         @Test

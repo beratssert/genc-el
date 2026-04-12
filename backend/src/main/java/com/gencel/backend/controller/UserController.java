@@ -4,6 +4,7 @@ import com.gencel.backend.dto.CreateUserRequest;
 import com.gencel.backend.dto.UpdateFcmTokenRequest;
 import com.gencel.backend.dto.LoginRequest;
 import com.gencel.backend.dto.LoginResponse;
+import com.gencel.backend.dto.UpdateLocationRequest;
 import com.gencel.backend.dto.UpdateUserProfileRequest;
 import com.gencel.backend.dto.UserResponse;
 import com.gencel.backend.entity.User;
@@ -73,6 +74,19 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         UserResponse response = userService.updateMyFcmToken(email, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/me/location")
+    @Operation(summary = "Canlı konumumu güncelle", description = "Giriş yapmış kullanıcının enlem ve boylam bilgisini günceller.")
+    public ResponseEntity<UserResponse> updateMyLocation(
+            @Parameter(hidden = true) Authentication authentication,
+            @Valid @RequestBody UpdateLocationRequest request) {
+        String email = authentication != null ? authentication.getName() : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserResponse response = userService.updateMyLocation(email, request);
         return ResponseEntity.ok(response);
     }
 

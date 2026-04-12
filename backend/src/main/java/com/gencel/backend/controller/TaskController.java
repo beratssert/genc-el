@@ -120,8 +120,9 @@ public class TaskController {
         @PutMapping("/{taskId}/confirm-end")
         public ResponseEntity<TaskResponse> confirmDeliveryTask(
                         @Parameter(description = "Onaylanacak görevin ID'si", required = true) @PathVariable UUID taskId,
+                        @RequestBody(required = false) DeliverTaskRequest request,
                         @Parameter(hidden = true) Authentication authentication) {
-                return ResponseEntity.ok(taskService.confirmDeliveryTask(taskId, authentication.getName()));
+                return ResponseEntity.ok(taskService.confirmDeliveryTask(taskId, authentication.getName(), request));
         }
 
         @Operation(summary = "Alışverişi Teslim Et", description = "Öğrencinin alışverişi tamamlayıp ürünleri ve para üstünü yaşlıya teslim etmesini bildirir. Görev durumu 'DELIVERED' olur.")

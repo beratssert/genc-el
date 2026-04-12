@@ -368,7 +368,7 @@ public class TaskIntegrationTest {
                                 .deliveryConfirmed(true)
                                 .build();
 
-                when(taskService.confirmDeliveryTask(taskId, "elderly@test.com")).thenReturn(response);
+                when(taskService.confirmDeliveryTask(taskId, "elderly@test.com", null)).thenReturn(response);
 
                 mockMvc.perform(put("/api/v1/tasks/{taskId}/confirm-end", taskId)
                                 .contentType(MediaType.APPLICATION_JSON))

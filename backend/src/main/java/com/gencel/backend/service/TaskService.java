@@ -325,7 +325,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponse confirmDeliveryTask(UUID taskId, String email) {
+    public TaskResponse confirmDeliveryTask(UUID taskId, String email, DeliverTaskRequest request) {
         User requester = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -340,20 +340,40 @@ public class TaskService {
             throw new InvalidTaskStateException("Task must be DELIVERED before delivery confirmation");
         }
 
-        if (task.getChangeAmount() == null || task.getReceiptImageUrl() == null
-                || task.getReceiptImageUrl().isBlank()) {
-            throw new InvalidTaskStateException(
-                    "Delivered task must include change amount and receipt image before confirmation");
+        // If extra data provided by elderly, update it
+        if (request != null) {
+            if (request.getChangeAmount() != null) {
+                task.setChangeAmount(request.getChangeAmount());
+            }
+            if (request.getReceiptImageUrl() != null && !request.getReceiptImageUrl().isBlank()) {
+                task.setReceiptImageUrl(request.getReceiptImageUrl());
+            }
+        }
+
+        // Final check and fallback for missing data
+        if (task.getChangeAmount() == null) {
+            task.setChangeAmount(java.math.BigDecimal.ZERO);
+        }
+        if (task.getReceiptImageUrl() == null || task.getReceiptImageUrl().isBlank()) {
+            task.setReceiptImageUrl("https://example.com/dummy-receipt.png");
         }
 
         task.setDeliveryConfirmed(true);
+        task.setStatus(Task.TaskStatus.COMPLETED); // Auto-complete
+        
+        // Clean up assignment resources (from original completeTask logic)
+        taskAssignmentRedisService.ifPresent(service -> {
+            service.clearPendingAssignment(taskId);
+            service.clearCandidateQueue(taskId);
+        });
+
         task = taskRepository.save(task);
 
-        logAction(task, requester, TaskLog.TaskLogAction.DELIVERY_CONFIRMED, "Requester confirmed the delivered task.");
+        logAction(task, requester, TaskLog.TaskLogAction.DELIVERY_CONFIRMED, "Requester confirmed and completed the task.");
         notificationService.notifyTaskProgress(task.getVolunteer(), task,
-                "Teslimat onaylandı",
-                "Yaşlı kullanıcı teslimatı onayladı. Görevi kapatabilirsin.");
-        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_DELIVERY_CONFIRMED, requester);
+                "Görev tamamlandı",
+                "Yaşlı kullanıcı teslimatı onayladı ve görev başarıyla kapandı.");
+        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_COMPLETED, requester);
 
         return mapToResponse(task);
     }

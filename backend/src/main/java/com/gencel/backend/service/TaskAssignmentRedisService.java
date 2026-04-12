@@ -10,6 +10,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +23,7 @@ import java.util.UUID;
 public class TaskAssignmentRedisService {
 
   private static final Duration ASSIGNMENT_TTL = Duration.ofMinutes(10);
+  private static final double MATCH_RADIUS_KM = 1.0;
   private static final String TASK_CANDIDATES_PREFIX = "task_candidates:";
   private static final String PENDING_ASSIGNMENT_PREFIX = "pending_assignment:";
 
@@ -38,9 +42,16 @@ public class TaskAssignmentRedisService {
     List<User> students = userRepository.findByInstitutionIdAndRoleOrderByCreatedAtDesc(
         institutionId, User.UserRole.STUDENT);
 
+    Double requesterLat = Optional.ofNullable(task.getRequester()).map(User::getLatitude).orElse(null);
+    Double requesterLon = Optional.ofNullable(task.getRequester()).map(User::getLongitude).orElse(null);
+
     List<String> candidateIds = students.stream()
         .filter(student -> !student.getId().equals(volunteer.getId()))
         .filter(student -> isAvailable(student.getId()))
+        .filter(student -> isWithinRadius(student, requesterLat, requesterLon))
+        .sorted(Comparator
+            .comparingLong((User student) -> completedTasksThisMonth(student.getId()))
+            .thenComparingDouble(student -> distanceOrMax(student, requesterLat, requesterLon)))
         .map(student -> student.getId().toString())
         .toList();
 
@@ -89,6 +100,48 @@ public class TaskAssignmentRedisService {
     long assignedCount = taskRepository.countByVolunteerIdAndStatus(studentId, Task.TaskStatus.ASSIGNED);
     long inProgressCount = taskRepository.countByVolunteerIdAndStatus(studentId, Task.TaskStatus.IN_PROGRESS);
     return assignedCount == 0 && inProgressCount == 0;
+  }
+
+  private long completedTasksThisMonth(UUID studentId) {
+    YearMonth currentMonth = YearMonth.now();
+    LocalDateTime start = currentMonth.atDay(1).atStartOfDay();
+    LocalDateTime end = currentMonth.plusMonths(1).atDay(1).atStartOfDay();
+    return taskRepository.countByVolunteerIdAndStatusAndUpdatedAtBetween(
+        studentId,
+        Task.TaskStatus.COMPLETED,
+        start,
+        end);
+  }
+
+  private boolean isWithinRadius(User student, Double requesterLat, Double requesterLon) {
+    if (requesterLat == null || requesterLon == null) {
+      return true;
+    }
+    Double studentLat = student.getLatitude();
+    Double studentLon = student.getLongitude();
+    if (studentLat == null || studentLon == null) {
+      return false;
+    }
+    return haversineKm(requesterLat, requesterLon, studentLat, studentLon) <= MATCH_RADIUS_KM;
+  }
+
+  private double distanceOrMax(User student, Double requesterLat, Double requesterLon) {
+    if (requesterLat == null || requesterLon == null || student.getLatitude() == null
+        || student.getLongitude() == null) {
+      return Double.MAX_VALUE;
+    }
+    return haversineKm(requesterLat, requesterLon, student.getLatitude(), student.getLongitude());
+  }
+
+  private double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+    double earthRadiusKm = 6371.0;
+    double dLat = Math.toRadians(lat2 - lat1);
+    double dLon = Math.toRadians(lon2 - lon1);
+    double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+        + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+            * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return earthRadiusKm * c;
   }
 
   private String candidateKey(UUID taskId) {

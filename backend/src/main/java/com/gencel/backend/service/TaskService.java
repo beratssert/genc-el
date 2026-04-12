@@ -73,6 +73,37 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    public List<TaskResponse> getNearbyPendingTasks(String email, Double latitude, Double longitude, Double radiusKm) {
+        User student = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!User.UserRole.STUDENT.equals(student.getRole())) {
+            throw new UnauthorizedActionException("Only STUDENT users can list nearby pending tasks");
+        }
+
+        if (student.getInstitution() == null || student.getInstitution().getId() == null) {
+            throw new IllegalArgumentException("User has no institution");
+        }
+
+        double effectiveRadius = radiusKm == null ? 5.0 : radiusKm;
+        if (effectiveRadius <= 0) {
+            throw new IllegalArgumentException("radiusKm must be greater than 0");
+        }
+
+        Double effectiveLat = latitude != null ? latitude : student.getLatitude();
+        Double effectiveLon = longitude != null ? longitude : student.getLongitude();
+
+        return taskRepository.findNearbyPendingTasks(
+                student.getInstitution().getId(),
+                effectiveLat,
+                effectiveLon,
+                effectiveRadius)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<TaskResponse> getMyTasks(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));

@@ -4,6 +4,7 @@ import com.gencel.backend.dto.CreateTaskRequest;
 import com.gencel.backend.dto.DeliverTaskRequest;
 import com.gencel.backend.dto.StartTaskRequest;
 import com.gencel.backend.dto.TaskResponse;
+import com.gencel.backend.entity.Institution;
 import com.gencel.backend.entity.Task;
 import com.gencel.backend.entity.TaskLog;
 import com.gencel.backend.entity.User;
@@ -146,6 +147,50 @@ public class TaskServiceTest {
 
         assertEquals(1, responses.size());
         assertEquals(task.getId(), responses.get(0).getId());
+    }
+
+    @Test
+    void getNearbyPendingTasks_Success() {
+        Institution institution = Institution.builder().id(UUID.randomUUID()).build();
+        studentUser.setInstitution(institution);
+        studentUser.setLatitude(39.93);
+        studentUser.setLongitude(32.85);
+
+        elderlyUser.setInstitution(institution);
+        task.setRequester(elderlyUser);
+        task.setStatus(Task.TaskStatus.PENDING);
+
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+        when(taskRepository.findNearbyPendingTasks(institution.getId(), 39.93, 32.85, 5.0))
+                .thenReturn(List.of(task));
+
+        List<TaskResponse> responses = taskService.getNearbyPendingTasks(studentUser.getEmail(), null, null, null);
+
+        assertEquals(1, responses.size());
+        assertEquals(task.getId(), responses.get(0).getId());
+        verify(taskRepository).findNearbyPendingTasks(institution.getId(), 39.93, 32.85, 5.0);
+    }
+
+    @Test
+    void getNearbyPendingTasks_ThrowsWhenNotStudent() {
+        when(userRepository.findByEmail(elderlyUser.getEmail())).thenReturn(Optional.of(elderlyUser));
+
+        UnauthorizedActionException exception = assertThrows(UnauthorizedActionException.class,
+                () -> taskService.getNearbyPendingTasks(elderlyUser.getEmail(), 39.9, 32.8, 3.0));
+
+        assertEquals("Only STUDENT users can list nearby pending tasks", exception.getMessage());
+    }
+
+    @Test
+    void getNearbyPendingTasks_ThrowsWhenRadiusInvalid() {
+        Institution institution = Institution.builder().id(UUID.randomUUID()).build();
+        studentUser.setInstitution(institution);
+        when(userRepository.findByEmail(studentUser.getEmail())).thenReturn(Optional.of(studentUser));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> taskService.getNearbyPendingTasks(studentUser.getEmail(), 39.9, 32.8, 0.0));
+
+        assertEquals("radiusKm must be greater than 0", exception.getMessage());
     }
 
     // --- getMyTasks Tests ---

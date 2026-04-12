@@ -8,6 +8,7 @@ import com.gencel.backend.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,6 +52,19 @@ public class TaskController {
         @GetMapping("/pending")
         public ResponseEntity<List<TaskResponse>> getPendingTasks() {
                 return ResponseEntity.ok(taskService.getPendingTasks());
+        }
+
+        @Operation(summary = "Yakındaki Bekleyen Görevleri Listele", description = "Öğrencinin konumuna göre yakındaki PENDING görevleri listeler.")
+        @GetMapping("/nearby")
+        @PreAuthorize("hasRole('STUDENT')")
+        public ResponseEntity<List<TaskResponse>> getNearbyPendingTasks(
+                        @Parameter(hidden = true) Authentication authentication,
+                        @Parameter(description = "Opsiyonel enlem") @RequestParam(required = false) Double latitude,
+                        @Parameter(description = "Opsiyonel boylam") @RequestParam(required = false) Double longitude,
+                        @Parameter(description = "Arama yarıçapı (km), varsayılan 5.0") @RequestParam(required = false) Double radiusKm) {
+                return ResponseEntity.ok(
+                                taskService.getNearbyPendingTasks(authentication.getName(), latitude, longitude,
+                                                radiusKm));
         }
 
         @Operation(summary = "Görevlerimi Listele", description = "Kullanıcının rolüne göre kendi oluşturduğu ya da üzerine aldığı görevleri listeler.")

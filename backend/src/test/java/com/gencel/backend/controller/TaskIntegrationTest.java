@@ -118,6 +118,32 @@ public class TaskIntegrationTest {
                                 .andExpect(jsonPath("$.length()").value(2));
         }
 
+        @Test
+        @WithMockUser(username = "student@test.com", roles = "STUDENT")
+        void getNearbyPendingTasks_Success() throws Exception {
+                TaskResponse nearbyTask = TaskResponse.builder().id(UUID.randomUUID()).status("PENDING").build();
+
+                when(taskService.getNearbyPendingTasks("student@test.com", 39.93, 32.85, 3.0))
+                                .thenReturn(List.of(nearbyTask));
+
+                mockMvc.perform(get("/api/v1/tasks/nearby")
+                                .param("latitude", "39.93")
+                                .param("longitude", "32.85")
+                                .param("radiusKm", "3.0")
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.length()").value(1))
+                                .andExpect(jsonPath("$[0].status").value("PENDING"));
+        }
+
+        @Test
+        @WithMockUser(username = "elderly@test.com", roles = "ELDERLY")
+        void getNearbyPendingTasks_ForbiddenForElderly() throws Exception {
+                mockMvc.perform(get("/api/v1/tasks/nearby")
+                                .contentType(MediaType.APPLICATION_JSON))
+                                .andExpect(status().isForbidden());
+        }
+
         // --- GET MY TASKS ---
 
         @Test

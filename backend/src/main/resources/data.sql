@@ -152,22 +152,22 @@ WHERE role IN ('STUDENT', 'ELDERLY');
 -- 4. BURS, GÖREV VE LOGLAR
 -- #############################################################
 
--- Burs Geçmişi
-INSERT INTO bursary_history (student_id, year, month, completed_task_count, calculated_amount, is_paid, payment_date, transaction_reference) VALUES 
-((SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 2024, 1, 4, 2000.0, TRUE, '2024-01-31 10:00:00', 'ANK-TX-001'),
-((SELECT id FROM users WHERE email = 'ayse@ankara.com'), 2024, 1, 2, 1000.0, TRUE, '2024-01-31 11:00:00', 'ANK-TX-002'),
-((SELECT id FROM users WHERE email = 'burak@istanbul.com'), 2024, 1, 5, 2500.0, TRUE, '2024-01-31 12:00:00', 'IST-TX-001'),
-((SELECT id FROM users WHERE email = 'selin@istanbul.com'), 2024, 1, 3, 1500.0, FALSE, NULL, NULL),
-((SELECT id FROM users WHERE email = 'ege@izmir.com'), 2024, 1, 1, 500.0, FALSE, NULL, NULL);
+-- -- Burs Geçmişi
+-- INSERT INTO bursary_history (student_id, year, month, completed_task_count, calculated_amount, is_paid, payment_date, transaction_reference) VALUES 
+-- ((SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 2024, 1, 4, 2000.0, TRUE, '2024-01-31 10:00:00', 'ANK-TX-001'),
+-- ((SELECT id FROM users WHERE email = 'ayse@ankara.com'), 2024, 1, 2, 1000.0, TRUE, '2024-01-31 11:00:00', 'ANK-TX-002'),
+-- ((SELECT id FROM users WHERE email = 'burak@istanbul.com'), 2024, 1, 5, 2500.0, TRUE, '2024-01-31 12:00:00', 'IST-TX-001'),
+-- ((SELECT id FROM users WHERE email = 'selin@istanbul.com'), 2024, 1, 3, 1500.0, FALSE, NULL, NULL),
+-- ((SELECT id FROM users WHERE email = 'ege@izmir.com'), 2024, 1, 1, 500.0, FALSE, NULL, NULL);
 
--- Görevler
-INSERT INTO tasks (id, requester_id, volunteer_id, status, shopping_list, note, total_amount_given, change_amount, receipt_image_url) VALUES 
-('10000000-0000-0000-0000-000000000001', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'COMPLETED', '["2 Adet Ekmek", "1 lt Süt"]', 'Taze olsun.', 100.0, 45.5, 'https://receipt.url'),
-('20000000-0000-0000-0000-000000000002', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), (SELECT id FROM users WHERE email = 'burak@istanbul.com'), 'IN_PROGRESS', '["Aspirin", "Ağrı Kesici"]', 'Acil.', NULL, NULL, NULL),
-('30000000-0000-0000-0000-000000000003', (SELECT id FROM users WHERE email = 'hikmet@izmir.com'), NULL, 'PENDING', '["Günlük Gazete"]', 'Hürriyet.', NULL, NULL, NULL);
+-- -- Görevler
+-- INSERT INTO tasks (id, requester_id, volunteer_id, status, shopping_list, note, total_amount_given, change_amount, receipt_image_url) VALUES 
+-- ('10000000-0000-0000-0000-000000000001', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'COMPLETED', '["2 Adet Ekmek", "1 lt Süt"]', 'Taze olsun.', 100.0, 45.5, 'https://receipt.url'),
+-- ('20000000-0000-0000-0000-000000000002', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), (SELECT id FROM users WHERE email = 'burak@istanbul.com'), 'IN_PROGRESS', '["Aspirin", "Ağrı Kesici"]', 'Acil.', NULL, NULL, NULL),
+-- ('30000000-0000-0000-0000-000000000003', (SELECT id FROM users WHERE email = 'hikmet@izmir.com'), NULL, 'PENDING', '["Günlük Gazete"]', 'Hürriyet.', NULL, NULL, NULL);
 
--- Loglar
-INSERT INTO task_logs (task_id, action, user_id, details) VALUES 
-('10000000-0000-0000-0000-000000000001', 'CREATED', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), 'İhtiyaç listesi oluşturuldu.'),
-('10000000-0000-0000-0000-000000000001', 'ASSIGNED', (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'Ahmet görevi üstlendi.'),
-('20000000-0000-0000-0000-000000000002', 'CREATED', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), 'İlaç yardımı istendi.');
+-- -- Loglar
+-- INSERT INTO task_logs (task_id, action, user_id, details) VALUES 
+-- ('10000000-0000-0000-0000-000000000001', 'CREATED', (SELECT id FROM users WHERE email = 'huseyin@ankara.com'), 'İhtiyaç listesi oluşturuldu.'),
+-- ('10000000-0000-0000-0000-000000000001', 'ASSIGNED', (SELECT id FROM users WHERE email = 'ahmet@ankara.com'), 'Ahmet görevi üstlendi.'),
+-- ('20000000-0000-0000-0000-000000000002', 'CREATED', (SELECT id FROM users WHERE email = 'ismet@istanbul.com'), 'İlaç yardımı istendi.');

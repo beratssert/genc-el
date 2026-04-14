@@ -27,7 +27,7 @@ final dashboardStatsProvider =
 final pendingTasksProvider =
     FutureProvider.autoDispose<List<Task>>((ref) async {
   final taskRepo = ref.read(taskRepositoryProvider);
-  return taskRepo.getPendingTasks();
+  return taskRepo.getNearbyTasks();
 });
 
 /// ─── My Tasks ───────────────────────────────────────────

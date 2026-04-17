@@ -8,6 +8,8 @@ import '../../screens/auth/login_screen.dart';
 import '../../widgets/student/student_greeting_header.dart';
 import '../../widgets/student/availability_card.dart';
 import '../../widgets/student/student_task_card.dart';
+import '../../widgets/student/student_action_buttons.dart';
+import '../../screens/student/student_order_history_screen.dart';
 
 /// Öğrenci kullanıcısının ana ekranı.
 class StudentHomeScreen extends ConsumerStatefulWidget {
@@ -54,6 +56,27 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('❌ Görev reddedildi.'),
+            backgroundColor: Color(0xFF64748B),
+          ),
+        );
+        _refreshData();
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+    }
+  }
+
+  Future<void> _cancelTask(String taskId) async {
+    try {
+      final taskRepo = ref.read(taskRepositoryProvider);
+      await taskRepo.cancelTask(taskId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Görev iptal edildi.'),
             backgroundColor: Color(0xFF64748B),
           ),
         );
@@ -297,7 +320,7 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                 onStart: () => _startTask(activeTask!.id),
                                 onDeliver: () => _deliverTask(activeTask!.id),
                                 onReject: () => _rejectTask(activeTask!.id),
-                                onCancel: () => _rejectTask(activeTask!.id),
+                                onCancel: () => _cancelTask(activeTask!.id),
                               );
                             },
                             loading: () => const Center(
@@ -362,6 +385,30 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // --- 4. Aksiyon Butonları ---
+                myTasksAsync.when(
+                  data: (tasks) {
+                    final completedTasks = tasks.where((t) => 
+                        t.status == TaskStatus.COMPLETED || 
+                        t.status == TaskStatus.CANCELLED).toList();
+                    return StudentActionButtons(
+                      onViewHistory: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StudentOrderHistoryScreen(
+                              completedTasks: completedTasks,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -430,22 +477,41 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _assignTask(task.id),
-              icon: const Icon(Icons.check_circle_outline, size: 18),
-              label: const Text('Kabul Et'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _cancelTask(task.id),
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('İptal Et'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade400,
+                    side: BorderSide(color: Colors.red.shade400.withValues(alpha: 0.4)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-                elevation: 0,
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _assignTask(task.id),
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Kabul Et'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

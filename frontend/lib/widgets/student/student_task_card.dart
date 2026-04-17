@@ -230,17 +230,39 @@ class _ActiveTaskContent extends StatelessWidget {
               onReject!,
             ),
           ],
+          if (onCancel != null) ...[
+            const SizedBox(height: 8),
+            _outlineButton(
+              'Görevi İptal Et',
+              Icons.cancel_outlined,
+              Colors.red.shade400,
+              onCancel!,
+            ),
+          ],
         ],
       );
     }
 
     // 2. Teslim Et (IN_PROGRESS durumunda)
     if (status == TaskStatus.IN_PROGRESS && onDeliver != null) {
-      return _largeButton(
-        'Teslim Et',
-        Icons.local_shipping_outlined,
-        const Color(0xFF06B6D4),
-        onDeliver!,
+      return Column(
+        children: [
+          _largeButton(
+            'Teslim Et',
+            Icons.local_shipping_outlined,
+            const Color(0xFF06B6D4),
+            onDeliver!,
+          ),
+          if (onCancel != null) ...[
+            const SizedBox(height: 8),
+            _outlineButton(
+              'Görevi İptal Et',
+              Icons.cancel_outlined,
+              Colors.red.shade400,
+              onCancel!,
+            ),
+          ],
+        ],
       );
     }
 
@@ -262,7 +284,7 @@ class _ActiveTaskContent extends StatelessWidget {
       );
     }
 
-    // 4. İptal Etme (Opsiyonel)
+    // 4. İptal Etme (Diğer durumlar için)
     if (status != TaskStatus.DELIVERED &&
         status != TaskStatus.COMPLETED &&
         onCancel != null) {

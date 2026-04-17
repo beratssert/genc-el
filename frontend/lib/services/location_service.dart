@@ -72,15 +72,15 @@ class LocationService {
 
   Future<void> _updateBackendLocation(Position position) async {
     // TEST MOCK: Akdeniz Üniversitesi Camii
-    // const double mockLat = 36.8920;
-    // const double mockLon = 30.6558;
+    const double mockLat = 36.8920;
+    const double mockLon = 30.6558;
 
     try {
       final userRepo = _ref.read(userRepoProvider);
-      await userRepo.updateLocation(position.latitude, position.longitude);
+      await userRepo.updateLocation(mockLat, mockLon);
       debugPrint(
-        // 'LocationService [MOCK]: Updated backend with Akdeniz Camii lat: $mockLat, lon: $mockLon',
-        'LocationService: Updated backend with lat: ${position.latitude}, lon: ${position.longitude}',
+        'LocationService [MOCK]: Updated backend with Akdeniz Camii lat: $mockLat, lon: $mockLon',
+        // 'LocationService: Updated backend with lat: ${position.latitude}, lon: ${position.longitude}',
       );
     } catch (e) {
       debugPrint('LocationService: Error updating backend location: $e');

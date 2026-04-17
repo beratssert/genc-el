@@ -21,6 +21,7 @@ class StudentHomeScreen extends ConsumerStatefulWidget {
 
 class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   bool _isAvailable = true;
+  final Set<String> _ignoredTaskIds = {}; // Backend'i etkilemeden sadece UI'dan gizlemek için
 
   @override
   void initState() {
@@ -320,7 +321,16 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                 onStart: () => _startTask(activeTask!.id),
                                 onDeliver: () => _deliverTask(activeTask!.id),
                                 onReject: () => _rejectTask(activeTask!.id),
-                                onCancel: () => _cancelTask(activeTask!.id),
+                                onCancel: () {
+                                  // ASSIGNED durumundaysa görev henüz başlanmamış,
+                                  // bu durumda "İptal Et" aslında "Reddet" işlemi yapmalı
+                                  if (activeTask!.status ==
+                                      TaskStatus.ASSIGNED) {
+                                    _rejectTask(activeTask!.id);
+                                  } else {
+                                    _cancelTask(activeTask!.id);
+                                  }
+                                },
                               );
                             },
                             loading: () => const Center(
@@ -368,9 +378,9 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                         ),
                                       ),
                                     ),
-                                    ...pendingTasks.map(
-                                      (t) => _buildPendingTaskCard(t),
-                                    ),
+                                    ...pendingTasks
+                                        .where((t) => !_ignoredTaskIds.contains(t.id))
+                                        .map((t) => _buildPendingTaskCard(t)),
                                   ],
                                 );
                               }
@@ -389,9 +399,13 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                 // --- 4. Aksiyon Butonları ---
                 myTasksAsync.when(
                   data: (tasks) {
-                    final completedTasks = tasks.where((t) => 
-                        t.status == TaskStatus.COMPLETED || 
-                        t.status == TaskStatus.CANCELLED).toList();
+                    final completedTasks = tasks
+                        .where(
+                          (t) =>
+                              t.status == TaskStatus.COMPLETED ||
+                              t.status == TaskStatus.CANCELLED,
+                        )
+                        .toList();
                     return StudentActionButtons(
                       onViewHistory: () {
                         Navigator.push(
@@ -481,12 +495,28 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _cancelTask(task.id),
+                  onPressed: () {
+                    // Task'ı tamamen iptal etmek (backend'de de CANCELLED yapmak) yerine
+                    // sadece bu öğrenci için arayüzden gizliyoruz (Reddediyoruz).
+                    setState(() {
+                      _ignoredTaskIds.add(task.id);
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('❌ Görev reddedildi (gizlendi).'),
+                          backgroundColor: Color(0xFF64748B),
+                        ),
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.close, size: 18),
-                  label: const Text('İptal Et'),
+                  label: const Text('Reddet'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red.shade400,
-                    side: BorderSide(color: Colors.red.shade400.withValues(alpha: 0.4)),
+                    side: BorderSide(
+                      color: Colors.red.shade400.withValues(alpha: 0.4),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

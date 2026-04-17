@@ -80,12 +80,12 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
                             const GreetingHeader(userName: 'Kullanıcı'),
                       ),
                     ),
-                    IconButton(
-                      onPressed: _refreshMyTasks,
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'Yenile',
-                      color: const Color(0xFF059669),
-                    ),
+                    // IconButton(
+                    //   onPressed: _refreshMyTasks,
+                    //   icon: const Icon(Icons.refresh_rounded),
+                    //   tooltip: 'Yenile',
+                    //   color: const Color(0xFF059669),
+                    // ),
                     IconButton(
                       onPressed: _logout,
                       icon: const Icon(Icons.logout_rounded),
@@ -112,15 +112,19 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
                           physics: const AlwaysScrollableScrollPhysics(),
                           child: ActiveOrderCard(
                             activeTask: currentActiveTask,
-                            onConfirmStart: () => _confirmStartTask(currentActiveTask!.id),
-                            onConfirmDelivery: () => _confirmDeliveryTask(currentActiveTask!.id),
+                            onConfirmStart: () =>
+                                _confirmStartTask(currentActiveTask!.id),
+                            onConfirmDelivery: () =>
+                                _confirmDeliveryTask(currentActiveTask!.id),
                             onCancel: () => _cancelTask(currentActiveTask!.id),
-                            onUploadReceipt: () => _pickAndUploadReceipt(currentActiveTask!.id),
+                            onUploadReceipt: () =>
+                                _pickAndUploadReceipt(currentActiveTask!.id),
                           ),
                         ),
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (err, _) => Center(child: Text('Hata: $err')),
                   ),
                 ),
@@ -139,7 +143,9 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
                       isOrderActive: currentActiveTask != null,
                       onCreateOrder: () async {
                         final result = await Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const CategoryScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const CategoryScreen(),
+                          ),
                         );
 
                         if (result != null) {
@@ -161,7 +167,7 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
                     onCreateOrder: () {},
                     onViewHistory: () {},
                   ),
-                  error: (_, __) => HomeActionButtons(
+                  error: (_, _) => HomeActionButtons(
                     isOrderActive: false,
                     onCreateOrder: () {},
                     onViewHistory: () {},
@@ -218,7 +224,10 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
         _refreshMyTasks();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 
@@ -238,7 +247,10 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
         _refreshMyTasks();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 
@@ -252,7 +264,9 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Öğrencinin getirdiği para üstü miktarını doğrulayın veya girin:'),
+            const Text(
+              'Öğrencinin getirdiği para üstü miktarını doğrulayın veya girin:',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: amountController,
@@ -271,8 +285,10 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
             child: const Text('İptal'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(ctx, double.tryParse(amountController.text) ?? 0.0),
+            onPressed: () => Navigator.pop(
+              ctx,
+              double.tryParse(amountController.text) ?? 0.0,
+            ),
             child: const Text('Onayla'),
           ),
         ],
@@ -285,13 +301,46 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
       final taskRepo = ref.read(taskRepositoryProvider);
       await taskRepo.confirmEndTask(taskId, changeAmount: amount);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Teslimat onaylandı!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('✅ Teslimat onaylandı!')));
         _refreshMyTasks();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted) {
+        String errorMsg = e.toString();
+        if (errorMsg.startsWith('Exception: ')) {
+          errorMsg = errorMsg.replaceFirst('Exception: ', '');
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    errorMsg,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444), // red-500
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            margin: const EdgeInsets.all(16),
+            action: SnackBarAction(
+              label: 'Kapat',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -309,7 +358,10 @@ class _ElderlyHomeScreenState extends ConsumerState<ElderlyHomeScreen> {
         _refreshMyTasks();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
     }
   }
 }

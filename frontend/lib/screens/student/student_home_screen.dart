@@ -21,7 +21,8 @@ class StudentHomeScreen extends ConsumerStatefulWidget {
 
 class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   bool _isAvailable = true;
-  final Set<String> _ignoredTaskIds = {}; // Backend'i etkilemeden sadece UI'dan gizlemek için
+  final Set<String> _ignoredTaskIds =
+      {}; // Backend'i etkilemeden sadece UI'dan gizlemek için
 
   @override
   void initState() {
@@ -42,10 +43,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -63,10 +65,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -84,10 +87,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -133,10 +137,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -182,10 +187,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -253,12 +259,12 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: _refreshData,
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'Yenile',
-                      color: const Color(0xFF2563EB),
-                    ),
+                    // IconButton(
+                    //   onPressed: _refreshData,
+                    //   icon: const Icon(Icons.refresh_rounded),
+                    //   tooltip: 'Yenile',
+                    //   color: const Color(0xFF2563EB),
+                    // ),
                     IconButton(
                       onPressed: _logout,
                       icon: const Icon(Icons.logout_rounded),
@@ -326,9 +332,9 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                   // bu durumda "İptal Et" aslında "Reddet" işlemi yapmalı
                                   if (activeTask!.status ==
                                       TaskStatus.ASSIGNED) {
-                                    _rejectTask(activeTask!.id);
+                                    _rejectTask(activeTask.id);
                                   } else {
-                                    _cancelTask(activeTask!.id);
+                                    _cancelTask(activeTask.id);
                                   }
                                 },
                               );
@@ -379,7 +385,10 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                       ),
                                     ),
                                     ...pendingTasks
-                                        .where((t) => !_ignoredTaskIds.contains(t.id))
+                                        .where(
+                                          (t) =>
+                                              !_ignoredTaskIds.contains(t.id),
+                                        )
                                         .map((t) => _buildPendingTaskCard(t)),
                                   ],
                                 );

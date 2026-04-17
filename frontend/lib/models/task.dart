@@ -61,6 +61,8 @@ class Task {
   final double? totalAmountGiven;
   final double? changeAmount;
   final String? receiptImageUrl;
+  final bool? startConfirmed;
+  final bool? deliveryConfirmed;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -74,6 +76,8 @@ class Task {
     this.totalAmountGiven,
     this.changeAmount,
     this.receiptImageUrl,
+    this.startConfirmed,
+    this.deliveryConfirmed,
     this.createdAt,
     this.updatedAt,
   });
@@ -92,6 +96,8 @@ class Task {
       totalAmountGiven: (json['totalAmountGiven'] as num?)?.toDouble(),
       changeAmount: (json['changeAmount'] as num?)?.toDouble(),
       receiptImageUrl: json['receiptImageUrl'],
+      startConfirmed: json['startConfirmed'] as bool?,
+      deliveryConfirmed: json['deliveryConfirmed'] as bool?,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'])
           : null,
@@ -112,6 +118,8 @@ class Task {
       'totalAmountGiven': totalAmountGiven,
       'changeAmount': changeAmount,
       'receiptImageUrl': receiptImageUrl,
+      'startConfirmed': startConfirmed,
+      'deliveryConfirmed': deliveryConfirmed,
     };
   }
 }

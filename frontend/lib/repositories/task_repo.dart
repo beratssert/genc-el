@@ -12,10 +12,7 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
 /// Abstract class defining the task (shopping workflow) repository interface.
 abstract class TaskRepository {
   /// Creates a new shopping request (Elderly).
-  Future<Task> createTask({
-    required List<String> shoppingList,
-    String? note,
-  });
+  Future<Task> createTask({required List<String> shoppingList, String? note});
 
   /// Lists all pending tasks (Student sees these).
   Future<List<Task>> getPendingTasks();
@@ -49,11 +46,7 @@ abstract class TaskRepository {
   Future<Task> confirmEndTask(String taskId, {double? changeAmount});
 
   /// Delivers the shopping (Student returned with goods).
-  Future<Task> deliverTask(
-    String taskId,
-    double changeAmount, {
-    String? note,
-  });
+  Future<Task> deliverTask(String taskId, double changeAmount, {String? note});
 
   /// Completes the task (Elderly confirms final step).
   Future<Task> completeTask(String taskId);
@@ -106,9 +99,9 @@ class TaskRepositoryImpl implements TaskRepository {
     final response = await _apiService.get(
       ApiUrl.nearbyTasks,
       queryParameters: {
-        if (latitude != null) 'latitude': latitude,
-        if (longitude != null) 'longitude': longitude,
-        if (radiusKm != null) 'radiusKm': radiusKm,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
+        'radiusKm': ?radiusKm,
       },
     );
     if (response is List) {
@@ -184,10 +177,7 @@ class TaskRepositoryImpl implements TaskRepository {
   }) async {
     final response = await _apiService.put(
       ApiUrl.deliverTask(taskId),
-      data: {
-        'changeAmount': changeAmount,
-        if (note != null) 'note': note,
-      },
+      data: {'changeAmount': changeAmount, 'note': ?note},
     );
     return Task.fromJson(response as Map<String, dynamic>);
   }

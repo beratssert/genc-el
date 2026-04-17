@@ -6,6 +6,7 @@ import '../../services/storage_service.dart';
 import '../../screens/auth/login_screen.dart';
 import 'create_user_screen.dart';
 import 'user_list_screen.dart';
+import 'web/institution_web_shell.dart';
 
 class InstitutionDashboardScreen extends ConsumerStatefulWidget {
   const InstitutionDashboardScreen({super.key});
@@ -30,6 +31,17 @@ class _InstitutionDashboardScreenState
 
   @override
   Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 800) {
+          return const InstitutionWebShell();
+        }
+        return _buildMobileLayout(context);
+      },
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
     final statsAsync = ref.watch(dashboardStatsProvider);
 
@@ -200,9 +212,12 @@ class _InstitutionDashboardScreenState
                                               const CreateUserScreen(),
                                         ),
                                       ).then((_) {
-                                        // Stats'ı yeniden yükle
+                                        // Stats ve listeyi yeniden yükle
                                         ref.invalidate(dashboardStatsProvider);
                                         ref.invalidate(currentUserProvider);
+                                        ref.invalidate(
+                                          institutionUsersProvider(null),
+                                        );
                                       });
                                     },
                                     isPrimary: true,
@@ -219,7 +234,12 @@ class _InstitutionDashboardScreenState
                                           builder: (context) =>
                                               const UserListScreen(),
                                         ),
-                                      );
+                                      ).then((_) {
+                                        ref.invalidate(dashboardStatsProvider);
+                                        ref.invalidate(
+                                          institutionUsersProvider(null),
+                                        );
+                                      });
                                     },
                                     isPrimary: false,
                                   ),

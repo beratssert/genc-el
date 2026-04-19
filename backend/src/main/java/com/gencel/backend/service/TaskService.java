@@ -57,7 +57,29 @@ public class TaskService {
         task = taskRepository.save(task);
 
         logAction(task, requester, TaskLog.TaskLogAction.CREATED, "Shopping task created by elderly user.");
-        publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_CREATED, requester);
+
+        boolean isAutoAssigned = false;
+        if (taskAssignmentRedisService.isPresent()) {
+            Optional<User> bestCandidate = taskAssignmentRedisService.get().createAssignmentQueueAndGetFirst(task);
+            if (bestCandidate.isPresent()) {
+                User volunteer = bestCandidate.get();
+                task.setVolunteer(volunteer);
+                task.setStatus(Task.TaskStatus.ASSIGNED);
+                task = taskRepository.save(task);
+
+                logAction(task, volunteer, TaskLog.TaskLogAction.ASSIGNED,
+                        "Task auto-assigned to highest priority candidate.");
+                notificationService.notifyTaskProgress(volunteer, task, "Yeni Görev Atandı",
+                        "Size uygun otomatik bir görev atandı, lütfen kontrol edin.");
+                publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_ASSIGNED, requester);
+
+                isAutoAssigned = true;
+            }
+        }
+
+        if (!isAutoAssigned) {
+            publishTaskEvent(task, TaskRealtimeEvent.EventType.TASK_CREATED, requester);
+        }
 
         return mapToResponse(task);
     }
@@ -340,10 +362,14 @@ public class TaskService {
             throw new InvalidTaskStateException("Task must be DELIVERED before delivery confirmation");
         }
 
-        // If extra data provided by elderly, update it
+        // If extra data provided by elderly, validate it against what student declared
         if (request != null) {
             if (request.getChangeAmount() != null) {
-                task.setChangeAmount(request.getChangeAmount());
+                if (task.getChangeAmount() != null
+                        && task.getChangeAmount().compareTo(request.getChangeAmount()) != 0) {
+                    throw new InvalidTaskStateException(
+                            "The provided change amount does not match, please check it again.");
+                }
             }
             if (request.getReceiptImageUrl() != null && !request.getReceiptImageUrl().isBlank()) {
                 task.setReceiptImageUrl(request.getReceiptImageUrl());
@@ -360,7 +386,7 @@ public class TaskService {
 
         task.setDeliveryConfirmed(true);
         task.setStatus(Task.TaskStatus.COMPLETED); // Auto-complete
-        
+
         // Clean up assignment resources (from original completeTask logic)
         taskAssignmentRedisService.ifPresent(service -> {
             service.clearPendingAssignment(taskId);
@@ -369,7 +395,8 @@ public class TaskService {
 
         task = taskRepository.save(task);
 
-        logAction(task, requester, TaskLog.TaskLogAction.DELIVERY_CONFIRMED, "Requester confirmed and completed the task.");
+        logAction(task, requester, TaskLog.TaskLogAction.DELIVERY_CONFIRMED,
+                "Requester confirmed and completed the task.");
         notificationService.notifyTaskProgress(task.getVolunteer(), task,
                 "Görev tamamlandı",
                 "Yaşlı kullanıcı teslimatı onayladı ve görev başarıyla kapandı.");

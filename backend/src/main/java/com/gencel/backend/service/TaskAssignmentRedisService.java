@@ -64,6 +64,52 @@ public class TaskAssignmentRedisService {
     updatePendingAssignment(taskId, volunteer.getId());
   }
 
+  public Optional<User> createAssignmentQueueAndGetFirst(Task task) {
+    UUID taskId = task.getId();
+    clearCandidateQueue(taskId);
+
+    UUID institutionId = Optional.ofNullable(task.getRequester().getInstitution())
+        .map(institution -> institution.getId())
+        .orElse(null);
+
+    if (institutionId == null) {
+      return Optional.empty();
+    }
+
+    Double requesterLat = Optional.ofNullable(task.getRequester()).map(User::getLatitude).orElse(null);
+    Double requesterLon = Optional.ofNullable(task.getRequester()).map(User::getLongitude).orElse(null);
+
+    List<User> students = userRepository.findNearbyAvailableStudents(
+        institutionId,
+        UUID.randomUUID(), // Exclude no one initially
+        requesterLat,
+        requesterLon,
+        MATCH_RADIUS_KM);
+
+    if (students.isEmpty()) {
+      return Optional.empty();
+    }
+
+    List<String> candidateIds = students.stream()
+        .sorted(Comparator
+            .comparingLong((User student) -> completedTasksThisMonth(student.getId()))
+            .thenComparingDouble(student -> distanceOrMax(student, requesterLat, requesterLon)))
+        .map(student -> student.getId().toString())
+        .toList();
+
+    String topCandidateStr = candidateIds.get(0);
+    List<String> remaining = candidateIds.subList(1, candidateIds.size());
+
+    if (!remaining.isEmpty()) {
+      stringRedisTemplate.opsForList().rightPushAll(candidateKey(taskId), remaining);
+    }
+
+    UUID topCandidateId = UUID.fromString(topCandidateStr);
+    updatePendingAssignment(taskId, topCandidateId);
+
+    return userRepository.findById(topCandidateId);
+  }
+
   public Optional<User> pollNextAvailableCandidate(UUID taskId) {
     while (true) {
       String candidateId = stringRedisTemplate.opsForList().leftPop(candidateKey(taskId));

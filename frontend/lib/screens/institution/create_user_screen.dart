@@ -8,7 +8,9 @@ import '../../widgets/custom_text_field.dart';
 enum UserType { elderly, student }
 
 class CreateUserScreen extends ConsumerStatefulWidget {
-  const CreateUserScreen({super.key});
+  final User? existingUser;
+
+  const CreateUserScreen({super.key, this.existingUser});
 
   @override
   ConsumerState<CreateUserScreen> createState() => _CreateUserScreenState();
@@ -28,6 +30,23 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
 
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingUser != null) {
+      final u = widget.existingUser!;
+      _selectedType = u.role == Role.STUDENT
+          ? UserType.student
+          : UserType.elderly;
+      _firstNameController.text = u.firstName;
+      _lastNameController.text = u.lastName;
+      _phoneController.text = u.phoneNumber ?? '';
+      _emailController.text = u.email ?? '';
+      _addressController.text = u.address ?? '';
+      _ibanController.text = u.iban ?? '';
+    }
+  }
+
   Future<void> _handleSubmit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_isLoading) return;
@@ -37,33 +56,65 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
     try {
       final institutionRepo = ref.read(institutionRepoProvider);
 
-      final request = CreateUserRequest(
-        role: _selectedType == UserType.elderly ? Role.ELDERLY : Role.STUDENT,
-        firstName: _firstNameController.text.trim(),
-        lastName: _lastNameController.text.trim(),
-        phoneNumber: _phoneController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        address: _addressController.text.trim().isEmpty
-            ? null
-            : _addressController.text.trim(),
-        iban: _selectedType == UserType.student &&
-                _ibanController.text.trim().isNotEmpty
-            ? _ibanController.text.trim()
-            : null,
-      );
+      if (widget.existingUser != null) {
+        final data = {
+          'firstName': _firstNameController.text.trim(),
+          'lastName': _lastNameController.text.trim(),
+          'phoneNumber': _phoneController.text.trim(),
+          'email': _emailController.text.trim(),
+          'address': _addressController.text.trim().isEmpty
+              ? null
+              : _addressController.text.trim(),
+          'iban':
+              _selectedType == UserType.student &&
+                  _ibanController.text.trim().isNotEmpty
+              ? _ibanController.text.trim()
+              : null,
+        };
+        // if user entered a new password, send it too
+        if (_passwordController.text.isNotEmpty) {
+          data['password'] = _passwordController.text;
+        }
 
-      await institutionRepo.createUser(request);
+        await institutionRepo.updateUserById(widget.existingUser!.id, data);
 
-      if (!mounted) return;
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Kullanıcı başarıyla güncellendi!'),
+            backgroundColor: Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        final request = CreateUserRequest(
+          role: _selectedType == UserType.elderly ? Role.ELDERLY : Role.STUDENT,
+          firstName: _firstNameController.text.trim(),
+          lastName: _lastNameController.text.trim(),
+          phoneNumber: _phoneController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          address: _addressController.text.trim().isEmpty
+              ? null
+              : _addressController.text.trim(),
+          iban:
+              _selectedType == UserType.student &&
+                  _ibanController.text.trim().isNotEmpty
+              ? _ibanController.text.trim()
+              : null,
+        );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Kullanıcı başarıyla oluşturuldu!'),
-          backgroundColor: Color(0xFF16A34A),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        await institutionRepo.createUser(request);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Kullanıcı başarıyla oluşturuldu!'),
+            backgroundColor: Color(0xFF16A34A),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
 
       Future.delayed(const Duration(milliseconds: 800), () {
         if (mounted) Navigator.pop(context);
@@ -102,10 +153,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEEF2FF),
-              Color(0xFFF3E8FF),
-            ],
+            colors: [Color(0xFFEEF2FF), Color(0xFFF3E8FF)],
           ),
         ),
         child: SafeArea(
@@ -139,20 +187,24 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                           color: const Color(0xFF4B5563),
                         ),
                         const SizedBox(width: 8),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Yeni Kullanıcı',
-                                style: TextStyle(
+                                widget.existingUser != null
+                                    ? 'Kullanıcı Düzenle'
+                                    : 'Yeni Kullanıcı',
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF111827),
                                 ),
                               ),
                               Text(
-                                'Kullanıcı bilgilerini girin',
+                                widget.existingUser != null
+                                    ? 'Kullanıcı bilgilerini güncelleyin'
+                                    : 'Kullanıcı bilgilerini girin',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Color(0xFF4B5563),
@@ -185,92 +237,99 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               // User Type Header
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFE0E7FF),
-                                      shape: BoxShape.circle,
+                              if (widget.existingUser == null) ...[
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFE0E7FF),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.person_add_outlined,
+                                        color: Color(0xFF4F46E5),
+                                      ),
                                     ),
-                                    child: const Icon(
-                                      Icons.person_add_outlined,
-                                      color: Color(0xFF4F46E5),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Kullanıcı Tipi',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF111827),
-                                          ),
-                                        ),
-                                        Text(
-                                          'Eklenecek kullanıcı türünü seçin',
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Color(0xFF4B5563),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 24),
+                                    const SizedBox(width: 12),
 
-                              // Segment Button
-                              SegmentedButton<UserType>(
-                                segments: const [
-                                  ButtonSegment(
-                                    value: UserType.elderly,
-                                    label: Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12),
-                                      child: Text('Yaşlı / Engelli'),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Kullanıcı Tipi',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF111827),
+                                            ),
+                                          ),
+                                          Text(
+                                            'Eklenecek kullanıcı türünü seçin',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF4B5563),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  ButtonSegment(
-                                    value: UserType.student,
-                                    label: Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12),
-                                      child: Text('Öğrenci'),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+
+                                // Segment Button
+                                SegmentedButton<UserType>(
+                                  segments: const [
+                                    ButtonSegment(
+                                      value: UserType.elderly,
+                                      label: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        child: Text('Yaşlı / Engelli'),
+                                      ),
                                     ),
-                                  ),
-                                ],
-                                selected: {_selectedType},
-                                onSelectionChanged:
-                                    (Set<UserType> newSelection) {
-                                  setState(() {
-                                    _selectedType = newSelection.first;
-                                  });
-                                },
-                                style: ButtonStyle(
-                                  backgroundColor:
-                                      WidgetStateProperty.resolveWith<Color>(
-                                    (Set<WidgetState> states) {
-                                      if (states
-                                          .contains(WidgetState.selected)) {
-                                        return Colors.white;
-                                      }
-                                      return const Color(0xFFF3F4F6);
-                                    },
-                                  ),
-                                  side: WidgetStateProperty.all(
-                                    const BorderSide(
-                                        color: Color(0xFFE5E7EB)),
+                                    ButtonSegment(
+                                      value: UserType.student,
+                                      label: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        child: Text('Öğrenci'),
+                                      ),
+                                    ),
+                                  ],
+                                  selected: {_selectedType},
+                                  onSelectionChanged:
+                                      (Set<UserType> newSelection) {
+                                        setState(() {
+                                          _selectedType = newSelection.first;
+                                        });
+                                      },
+                                  style: ButtonStyle(
+                                    backgroundColor:
+                                        WidgetStateProperty.resolveWith<Color>((
+                                          Set<WidgetState> states,
+                                        ) {
+                                          if (states.contains(
+                                            WidgetState.selected,
+                                          )) {
+                                            return Colors.white;
+                                          }
+                                          return const Color(0xFFF3F4F6);
+                                        }),
+                                    side: WidgetStateProperty.all(
+                                      const BorderSide(
+                                        color: Color(0xFFE5E7EB),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                               const SizedBox(height: 24),
 
                               Form(
@@ -319,8 +378,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                                       hintText: 'ornek@email.com',
                                       prefixIcon: Icons.email_outlined,
                                       controller: _emailController,
-                                      keyboardType:
-                                          TextInputType.emailAddress,
+                                      keyboardType: TextInputType.emailAddress,
                                       validator: (v) {
                                         if (v == null || v.isEmpty) {
                                           return 'E-posta zorunlu';
@@ -340,8 +398,7 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                                       controller: _addressController,
                                       minLines: 2,
                                       maxLines: 4,
-                                      keyboardType:
-                                          TextInputType.multiline,
+                                      keyboardType: TextInputType.multiline,
                                     ),
                                     const SizedBox(height: 16),
                                     // IBAN (sadece öğrenci)
@@ -358,13 +415,19 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                                     ],
                                     // Şifre
                                     CustomTextField(
-                                      label: 'Geçici Şifre',
+                                      label: widget.existingUser != null
+                                          ? 'Yeni Şifre (İsteğe Bağlı)'
+                                          : 'Geçici Şifre',
                                       hintText:
                                           'Min 8 karakter, 1 büyük, 1 küçük, 1 rakam',
                                       prefixIcon: Icons.lock_outline,
                                       controller: _passwordController,
                                       obscureText: true,
                                       validator: (v) {
+                                        if (widget.existingUser != null &&
+                                            (v == null || v.isEmpty)) {
+                                          return null; // optional when editing
+                                        }
                                         if (v == null || v.isEmpty) {
                                           return 'Şifre zorunlu';
                                         }
@@ -394,12 +457,14 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                                             ? null
                                             : _handleSubmit,
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF4F46E5),
+                                          backgroundColor: const Color(
+                                            0xFF4F46E5,
+                                          ),
                                           foregroundColor: Colors.white,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                           elevation: 0,
                                         ),
@@ -409,12 +474,14 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                                                 height: 24,
                                                 child:
                                                     CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Colors.white,
-                                                ),
+                                                      strokeWidth: 2,
+                                                      color: Colors.white,
+                                                    ),
                                               )
-                                            : const Text(
-                                                'Kullanıcı Oluştur',
+                                            : Text(
+                                                widget.existingUser != null
+                                                    ? 'Kullanıcıyı Güncelle'
+                                                    : 'Kullanıcı Oluştur',
                                                 style: TextStyle(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.w500,
@@ -427,17 +494,18 @@ class _CreateUserScreenState extends ConsumerState<CreateUserScreen> {
                                       width: double.infinity,
                                       height: 48,
                                       child: OutlinedButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context),
+                                        onPressed: () => Navigator.pop(context),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor:
-                                              const Color(0xFF111827),
+                                          foregroundColor: const Color(
+                                            0xFF111827,
+                                          ),
                                           side: const BorderSide(
                                             color: Color(0xFFE5E7EB),
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                           ),
                                         ),
                                         child: const Text(

@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 /// Backend API endpointleri.
 /// Base URL Dio'da zaten tanımlı, buradaki path'ler relative.
 ///
@@ -7,28 +5,21 @@ import 'dart:io' show Platform;
 /// Android fiziksel cihaz: bilgisayarın yerel ağ IP'si
 /// iOS simülatör / macOS: localhost
 class ApiUrl {
-  // Bilgisayarınızın yerel ağdaki IP adresi (Fiziksel cihazlar için)
-  // Mac Terminal'den 'ipconfig getifaddr en0' komutu ile öğrenebilirsiniz.
-  static const String _serverIp = '192.168.1.106';
+  // Railway production URL
+  // Railway otomatik olarak HTTPS sağlıyor (port 443)
+  // Tomcat'in internal port'u 8080 ama Railway SSL/TLS'i hallediyor
+  static const String _productionUrl =
+      'genc-el-railway-production.up.railway.app';
 
   static String get baseUrl {
-    if (Platform.isAndroid || Platform.isIOS) {
-      // Eğer simülatör/emülatör değilse IP kullan, değilse localhost/10.0.2.2
-      // Not: iOS fiziksel cihazda localhost çalışmaz, IP gereklidir.
-      bool isEmulator = false; // Basitleştirmek için direkt IP kullanıyoruz
-
-      // Geliştirme ortamına göre burayı switch edebilirsiniz:
-      // return 'http://localhost:8080'; // Simulator
-      return 'http://$_serverIp:8080'; // Physical Device
-    }
-    return 'http://localhost:8080';
+    // Production: Railway'de deploy edilmiş backend
+    // Port belirtmeye gerek yok, Railway HTTPS'i standard port'ta (443) sunuyor
+    return 'https://$_productionUrl';
   }
 
   static String get wsUrl {
-    if (Platform.isAndroid || Platform.isIOS) {
-      return 'ws://$_serverIp:8080/ws/websocket';
-    }
-    return 'ws://localhost:8080/ws/websocket';
+    // Production: Railway'de deploy edilmiş WebSocket
+    return 'wss://$_productionUrl/ws/websocket';
   }
 
   // ─── Auth ───────────────────────────────────────────

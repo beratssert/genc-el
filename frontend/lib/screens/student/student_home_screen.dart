@@ -8,6 +8,8 @@ import '../../screens/auth/login_screen.dart';
 import '../../widgets/student/student_greeting_header.dart';
 import '../../widgets/student/availability_card.dart';
 import '../../widgets/student/student_task_card.dart';
+import '../../widgets/student/student_action_buttons.dart';
+import '../../screens/student/student_order_history_screen.dart';
 
 /// Öğrenci kullanıcısının ana ekranı.
 class StudentHomeScreen extends ConsumerStatefulWidget {
@@ -19,6 +21,8 @@ class StudentHomeScreen extends ConsumerStatefulWidget {
 
 class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
   bool _isAvailable = true;
+  final Set<String> _ignoredTaskIds =
+      {}; // Backend'i etkilemeden sadece UI'dan gizlemek için
 
   @override
   void initState() {
@@ -39,10 +43,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -60,10 +65,33 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
+    }
+  }
+
+  Future<void> _cancelTask(String taskId) async {
+    try {
+      final taskRepo = ref.read(taskRepositoryProvider);
+      await taskRepo.cancelTask(taskId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Görev iptal edildi.'),
+            backgroundColor: Color(0xFF64748B),
+          ),
+        );
+        _refreshData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -109,10 +137,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -158,10 +187,11 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
         _refreshData();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     }
   }
 
@@ -229,12 +259,12 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: _refreshData,
-                      icon: const Icon(Icons.refresh_rounded),
-                      tooltip: 'Yenile',
-                      color: const Color(0xFF2563EB),
-                    ),
+                    // IconButton(
+                    //   onPressed: _refreshData,
+                    //   icon: const Icon(Icons.refresh_rounded),
+                    //   tooltip: 'Yenile',
+                    //   color: const Color(0xFF2563EB),
+                    // ),
                     IconButton(
                       onPressed: _logout,
                       icon: const Icon(Icons.logout_rounded),
@@ -297,7 +327,16 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                 onStart: () => _startTask(activeTask!.id),
                                 onDeliver: () => _deliverTask(activeTask!.id),
                                 onReject: () => _rejectTask(activeTask!.id),
-                                onCancel: () => _rejectTask(activeTask!.id),
+                                onCancel: () {
+                                  // ASSIGNED durumundaysa görev henüz başlanmamış,
+                                  // bu durumda "İptal Et" aslında "Reddet" işlemi yapmalı
+                                  if (activeTask!.status ==
+                                      TaskStatus.ASSIGNED) {
+                                    _rejectTask(activeTask.id);
+                                  } else {
+                                    _cancelTask(activeTask.id);
+                                  }
+                                },
                               );
                             },
                             loading: () => const Center(
@@ -345,9 +384,12 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                                         ),
                                       ),
                                     ),
-                                    ...pendingTasks.map(
-                                      (t) => _buildPendingTaskCard(t),
-                                    ),
+                                    ...pendingTasks
+                                        .where(
+                                          (t) =>
+                                              !_ignoredTaskIds.contains(t.id),
+                                        )
+                                        .map((t) => _buildPendingTaskCard(t)),
                                   ],
                                 );
                               }
@@ -362,6 +404,34 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // --- 4. Aksiyon Butonları ---
+                myTasksAsync.when(
+                  data: (tasks) {
+                    final completedTasks = tasks
+                        .where(
+                          (t) =>
+                              t.status == TaskStatus.COMPLETED ||
+                              t.status == TaskStatus.CANCELLED,
+                        )
+                        .toList();
+                    return StudentActionButtons(
+                      onViewHistory: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => StudentOrderHistoryScreen(
+                              completedTasks: completedTasks,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -430,22 +500,57 @@ class _StudentHomeScreenState extends ConsumerState<StudentHomeScreen> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _assignTask(task.id),
-              icon: const Icon(Icons.check_circle_outline, size: 18),
-              label: const Text('Kabul Et'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // Task'ı tamamen iptal etmek (backend'de de CANCELLED yapmak) yerine
+                    // sadece bu öğrenci için arayüzden gizliyoruz (Reddediyoruz).
+                    setState(() {
+                      _ignoredTaskIds.add(task.id);
+                    });
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('❌ Görev reddedildi (gizlendi).'),
+                          backgroundColor: Color(0xFF64748B),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Reddet'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red.shade400,
+                    side: BorderSide(
+                      color: Colors.red.shade400.withValues(alpha: 0.4),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
                 ),
-                elevation: 0,
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _assignTask(task.id),
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Kabul Et'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

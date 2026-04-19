@@ -213,14 +213,40 @@ class _ActiveTaskContent extends StatelessWidget {
 
     // 1. Alışverişe Başla (ASSIGNED durumunda)
     if (status == TaskStatus.ASSIGNED && onStart != null) {
+      final isStartConfirmed = task.startConfirmed ?? false;
       return Column(
         children: [
-          _largeButton(
-            'Alışverişe Başla',
-            Icons.play_arrow_rounded,
-            const Color(0xFF8B5CF6),
-            onStart!,
-          ),
+          if (isStartConfirmed)
+            _largeButton(
+              'Alışverişe Başla',
+              Icons.play_arrow_rounded,
+              const Color(0xFF8B5CF6),
+              onStart!,
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.hourglass_empty_rounded, size: 20, color: Color(0xFF64748B)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Yaşlının onayı bekleniyor...',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (onReject != null) ...[
             const SizedBox(height: 8),
             _outlineButton(
@@ -230,17 +256,39 @@ class _ActiveTaskContent extends StatelessWidget {
               onReject!,
             ),
           ],
+          if (onCancel != null) ...[
+            const SizedBox(height: 8),
+            _outlineButton(
+              'Görevi İptal Et',
+              Icons.cancel_outlined,
+              Colors.red.shade400,
+              onCancel!,
+            ),
+          ],
         ],
       );
     }
 
     // 2. Teslim Et (IN_PROGRESS durumunda)
     if (status == TaskStatus.IN_PROGRESS && onDeliver != null) {
-      return _largeButton(
-        'Teslim Et',
-        Icons.local_shipping_outlined,
-        const Color(0xFF06B6D4),
-        onDeliver!,
+      return Column(
+        children: [
+          _largeButton(
+            'Teslim Et',
+            Icons.local_shipping_outlined,
+            const Color(0xFF06B6D4),
+            onDeliver!,
+          ),
+          if (onCancel != null) ...[
+            const SizedBox(height: 8),
+            _outlineButton(
+              'Görevi İptal Et',
+              Icons.cancel_outlined,
+              Colors.red.shade400,
+              onCancel!,
+            ),
+          ],
+        ],
       );
     }
 
@@ -262,7 +310,7 @@ class _ActiveTaskContent extends StatelessWidget {
       );
     }
 
-    // 4. İptal Etme (Opsiyonel)
+    // 4. İptal Etme (Diğer durumlar için)
     if (status != TaskStatus.DELIVERED &&
         status != TaskStatus.COMPLETED &&
         onCancel != null) {

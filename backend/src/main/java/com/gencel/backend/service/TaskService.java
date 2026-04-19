@@ -368,7 +368,7 @@ public class TaskService {
                 if (task.getChangeAmount() != null
                         && task.getChangeAmount().compareTo(request.getChangeAmount()) != 0) {
                     throw new InvalidTaskStateException(
-                            "Girdiğiniz para üstü miktarı uyuşmuyor, lütfen tekrar kontrol ediniz.");
+                            "The provided change amount does not match, please check it again.");
                 }
             }
             if (request.getReceiptImageUrl() != null && !request.getReceiptImageUrl().isBlank()) {

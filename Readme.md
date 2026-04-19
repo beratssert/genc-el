@@ -34,6 +34,7 @@ This repository contains a monorepo structure:
 - [Database Schema](docs/database_schema.md)
 - [API Endpoints](docs/api_endpoints.md)
 - [Matching Algorithm](docs/matching_algorithm.md)
+- [Technical Debt Notes](docs/technical_debt.md)
 
 ## 🤝 Contribution
 This project is developed by a team of 4 students (2 Backend, 2 Frontend).

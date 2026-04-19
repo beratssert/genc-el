@@ -16,6 +16,13 @@ Bu doküman, ürün davranışı olarak değil, geçici uygulama detayı olarak 
 - Risk: Bu değer gerçek kullanıcı kimliği değildir; yalnızca sentinel amaçlıdır ve iş kuralı olarak ele alınmamalıdır.
 - Kaldırma koşulu: Repository sorgusu `null`/optional exclude parametre destekleyecek şekilde yeniden düzenlendiğinde veya ayrı bir overload eklendiğinde.
 
-## 3. Genel not
+## 3. Delivery confirmation auto-complete mismatch
+- Konum: `TaskService.confirmDeliveryTask(...)` ve `TaskIntegrationTest.confirmDeliveryTask_Success(...)`
+- Ne yapıyor: Teslim onayı tek adımda görevi `COMPLETED` durumuna geçiriyor; test tarafındaki beklenen akış ise teslimin `DELIVERED` + `deliveryConfirmed=true` seviyesinde kalması ve tamamlamanın ayrı bir adım olarak ele alınması.
+- Neden önemli: Davranış ile test/akış beklentisi aynı değilse, ileride teslim onayı ile tamamlamanın birbirine karışmasına ve audit akışında belirsizliğe yol açabilir.
+- Risk: Bu fark korunursa API sözleşmesi ile testler ve ürün davranışı arasında uyumsuzluk oluşur.
+- Kaldırma koşulu: Teslim onayı ve görev tamamlama akışı net biçimde tek aşamalı ya da iki aşamalı olarak standardize edildiğinde.
+
+## 4. Genel not
 - Bu maddeler yeni ürün davranışı değil, mevcut akışı bozmamak için kabul edilmiş teknik geçici çözümlerdir.
 - Yeni borç eklendikçe bu dokümana kısa ve net maddeler halinde yazılmalıdır.
